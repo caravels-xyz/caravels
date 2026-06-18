@@ -51,27 +51,26 @@ def generate(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
-    llm: "LLMProvider",
-    cmc: "CMCAdapter | None" = None,
+    cfg: AppConfig,
+    score: Score,
+    llm: LLMProvider,
+    cmc: CMCAdapter | None = None,
 ) -> tuple[CandidateAction, dict]:
     from ..signal import _generate_agentic, _stub_type
     from .momentum_rebalance import compute_diagnostics
 
     pre_diag = compute_diagnostics(snapshot, portfolio, competition, cfg, score)
 
-    if (
-        cfg.helm_agentic
-        and cmc is not None
-        and not getattr(cmc, "_stub", True)
-        and hasattr(llm, "complete_with_tools")
-        and not isinstance(llm, _stub_type())
-    ):
+    if cfg.helm_agentic and cmc is not None and not getattr(cmc, "_stub", True) and hasattr(llm, "complete_with_tools") and not isinstance(llm, _stub_type()):
         try:
             return _generate_agentic(
-                snapshot, cfg, llm, cmc,
-                portfolio=portfolio, competition=competition, score=score,
+                snapshot,
+                cfg,
+                llm,
+                cmc,
+                portfolio=portfolio,
+                competition=competition,
+                score=score,
                 system_prompt=TREND_FOLLOWING_SYSTEM,
                 diagnostics_fn=compute_diagnostics,
                 strategy_name="trend_following",
@@ -86,8 +85,8 @@ def _deterministic(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
+    cfg: AppConfig,
+    score: Score,
     pre_diag: dict,
 ) -> tuple[CandidateAction, dict]:
     nav = pre_diag["nav"]
@@ -103,8 +102,8 @@ def _deterministic(
         lr = pre_diag.get("largest_risk_holding")
         if lr:
             size_pct = min(cfg.risk.max_trade_size_pct, lr["usd"] / max(nav, 1) * 100)
-            return _candidate(lr["token"], Direction.SELL, size_pct, f"tier3 survival", snapshot, "trend_following", pre_diag)
-        return _hold(f"tier3 — no risk holdings", snapshot, pre_diag)
+            return _candidate(lr["token"], Direction.SELL, size_pct, "tier3 survival", snapshot, "trend_following", pre_diag)
+        return _hold("tier3 — no risk holdings", snapshot, pre_diag)
 
     # Score + trend filter per token
     filtered_scores: dict[str, float] = {}
@@ -146,9 +145,7 @@ def _deterministic(
                 size_pct *= cfg.momentum_size_scale_tier1
             if size_pct < 0.5:
                 continue
-            return _candidate(t, Direction.BUY, round(size_pct, 4),
-                              f"trend: buy {t} score={filtered_scores[t]:.2f} drift={drift:.2f}%",
-                              snapshot, "trend_following", pre_diag)
+            return _candidate(t, Direction.BUY, round(size_pct, 4), f"trend: buy {t} score={filtered_scores[t]:.2f} drift={drift:.2f}%", snapshot, "trend_following", pre_diag)
 
     # Check for exits — any held token that's no longer trending
     for t in list(holdings.keys()):
@@ -157,17 +154,16 @@ def _deterministic(
         if t not in filtered_scores:
             size_pct = min(cfg.risk.max_trade_size_pct, holdings[t] / max(nav, 1) * 100)
             if size_pct >= min_drift:
-                return _candidate(t, Direction.SELL, round(size_pct, 4),
-                                  f"trend exit: {t} score below threshold",
-                                  snapshot, "trend_following", pre_diag)
+                return _candidate(t, Direction.SELL, round(size_pct, 4), f"trend exit: {t} score below threshold", snapshot, "trend_following", pre_diag)
 
     return _hold("no actionable drift in trend-following", snapshot, pre_diag)
 
 
 def _candidate(token, direction, size_pct, rationale, snapshot, strategy_name, diag):
-    from ..models import ExecutionMode
     c = CandidateAction(
-        token=token, direction=direction, size_pct=max(0.0, size_pct),
+        token=token,
+        direction=direction,
+        size_pct=max(0.0, size_pct),
         rationale=rationale,
         signal_refs=[f"snapshot:{snapshot.timestamp.isoformat()}", f"strategy:{strategy_name}"],
         execution_mode=ExecutionMode.MARKET,
@@ -179,7 +175,11 @@ def _candidate(token, direction, size_pct, rationale, snapshot, strategy_name, d
 
 def _hold(reason, snapshot, diag):
     c = CandidateAction(
-        token="USDC", direction=Direction.HOLD, size_pct=0.0, rationale=reason,
-        signal_refs=["strategy:trend_following"], strategy_version="trend_following",
+        token="USDC",
+        direction=Direction.HOLD,
+        size_pct=0.0,
+        rationale=reason,
+        signal_refs=["strategy:trend_following"],
+        strategy_version="trend_following",
     )
     return c, {"source": "trend_following", "hold_reason": reason, "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}

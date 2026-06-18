@@ -24,7 +24,7 @@ def apply_guards(
     rationale: str,
     prose_rationale: str,
     snapshot: MarketSnapshot,
-    cfg: "AppConfig",
+    cfg: AppConfig,
     pre_diag: dict | None,
 ) -> tuple[Direction, float, str, str, str | None]:
     """Apply weak-signal and churn guards.
@@ -49,10 +49,7 @@ def apply_guards(
         nav = pre_diag.get("nav", 0.0)
         if nav > 0:
             drift = abs(pre_diag.get("drifts", {}).get(token, 0.0))
-            est_cost_pct = (
-                (cfg.simulated_cost_bps / 100.0)
-                + (cfg.simulated_fixed_cost_usd / nav * 100.0)
-            )
+            est_cost_pct = (cfg.simulated_cost_bps / 100.0) + (cfg.simulated_fixed_cost_usd / nav * 100.0)
             min_drift = pre_diag.get("min_drift_pct", 0.0)
             if drift < min_drift:
                 guard_reason = f"churn: drift {drift:.2f}% < min_drift {min_drift:.2f}%"

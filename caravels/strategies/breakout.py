@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from ..config import STABLE_TOKENS
 from ..models import CandidateAction, CompetitionState, Direction, ExecutionMode, MarketSnapshot, PortfolioState, Score
 
 if TYPE_CHECKING:
@@ -50,27 +49,26 @@ def generate(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
-    llm: "LLMProvider",
-    cmc: "CMCAdapter | None" = None,
+    cfg: AppConfig,
+    score: Score,
+    llm: LLMProvider,
+    cmc: CMCAdapter | None = None,
 ) -> tuple[CandidateAction, dict]:
     from ..signal import _generate_agentic, _stub_type
     from .momentum_rebalance import compute_diagnostics
 
     pre_diag = compute_diagnostics(snapshot, portfolio, competition, cfg, score)
 
-    if (
-        cfg.helm_agentic
-        and cmc is not None
-        and not getattr(cmc, "_stub", True)
-        and hasattr(llm, "complete_with_tools")
-        and not isinstance(llm, _stub_type())
-    ):
+    if cfg.helm_agentic and cmc is not None and not getattr(cmc, "_stub", True) and hasattr(llm, "complete_with_tools") and not isinstance(llm, _stub_type()):
         try:
             return _generate_agentic(
-                snapshot, cfg, llm, cmc,
-                portfolio=portfolio, competition=competition, score=score,
+                snapshot,
+                cfg,
+                llm,
+                cmc,
+                portfolio=portfolio,
+                competition=competition,
+                score=score,
                 system_prompt=BREAKOUT_SYSTEM,
                 diagnostics_fn=compute_diagnostics,
                 strategy_name="breakout",
@@ -85,7 +83,7 @@ def _deterministic(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
+    cfg: AppConfig,
     pre_diag: dict,
 ) -> tuple[CandidateAction, dict]:
     nav = pre_diag["nav"]
@@ -97,9 +95,7 @@ def _deterministic(
     if tier >= 3:
         lr = pre_diag.get("largest_risk_holding")
         if lr:
-            return _cand(lr["token"], Direction.SELL,
-                         min(cfg.risk.max_trade_size_pct, lr["usd"] / max(nav, 1) * 100),
-                         "tier3 survival", snapshot, pre_diag)
+            return _cand(lr["token"], Direction.SELL, min(cfg.risk.max_trade_size_pct, lr["usd"] / max(nav, 1) * 100), "tier3 survival", snapshot, pre_diag)
         return _hold("tier3 — no risk holdings", snapshot, pre_diag)
 
     buy_candidates: list[tuple[float, str, str]] = []
@@ -117,10 +113,7 @@ def _deterministic(
         rsi = feat.rsi_14 or 50.0
 
         # --- Breakout BUY levels ---
-        breakout_levels = [
-            v for v in [feat.pivot_r1, feat.pivot_r2, feat.fib_61_8, feat.fib_78_6]
-            if v and v > 0
-        ]
+        breakout_levels = [v for v in [feat.pivot_r1, feat.pivot_r2, feat.fib_61_8, feat.fib_78_6] if v and v > 0]
         for lvl in breakout_levels:
             if price > lvl * (1 + buffer) and rsi < 75:
                 if macd is not None and macd_sig is not None and macd > macd_sig:
@@ -130,10 +123,7 @@ def _deterministic(
 
         # --- Breakdown SELL levels (exit held positions only) ---
         if holdings.get(t, 0.0) > 0:
-            exit_levels = [
-                v for v in [feat.pivot_s1, feat.pivot_s2, feat.fib_38_2, feat.fib_50_0]
-                if v and v > 0
-            ]
+            exit_levels = [v for v in [feat.pivot_s1, feat.pivot_s2, feat.fib_38_2, feat.fib_50_0] if v and v > 0]
             for lvl in exit_levels:
                 if price < lvl * (1 - buffer):
                     if macd is not None and macd_sig is not None and macd < macd_sig:
@@ -152,8 +142,7 @@ def _deterministic(
         if tier >= 1:
             size_pct *= cfg.momentum_size_scale_tier1
         if size_pct >= 0.5 and size_pct >= min_drift:
-            return _cand(token, Direction.BUY, round(size_pct, 4),
-                         f"breakout buy: {reason}", snapshot, pre_diag)
+            return _cand(token, Direction.BUY, round(size_pct, 4), f"breakout buy: {reason}", snapshot, pre_diag)
 
     if sell_candidates:
         sell_candidates.sort(reverse=True)
@@ -161,18 +150,20 @@ def _deterministic(
         pos_pct = holdings.get(token, 0.0) / max(nav, 1) * 100
         size_pct = min(pos_pct, cfg.risk.max_trade_size_pct)
         if size_pct >= 0.5 and size_pct >= min_drift:
-            return _cand(token, Direction.SELL, round(size_pct, 4),
-                         f"breakout exit: {reason}", snapshot, pre_diag)
+            return _cand(token, Direction.SELL, round(size_pct, 4), f"breakout exit: {reason}", snapshot, pre_diag)
 
     return _hold("no breakout signal above threshold", snapshot, pre_diag)
 
 
 def _cand(token, direction, size_pct, rationale, snapshot, diag):
     c = CandidateAction(
-        token=token, direction=direction, size_pct=max(0.0, size_pct),
+        token=token,
+        direction=direction,
+        size_pct=max(0.0, size_pct),
         rationale=rationale,
         signal_refs=[f"snapshot:{snapshot.timestamp.isoformat()}", "strategy:breakout"],
-        execution_mode=ExecutionMode.MARKET, execution_mode_rationale="breakout market swap",
+        execution_mode=ExecutionMode.MARKET,
+        execution_mode_rationale="breakout market swap",
         strategy_version="breakout",
     )
     return c, {"source": "breakout", "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}
@@ -180,7 +171,11 @@ def _cand(token, direction, size_pct, rationale, snapshot, diag):
 
 def _hold(reason, snapshot, diag):
     c = CandidateAction(
-        token="USDC", direction=Direction.HOLD, size_pct=0.0, rationale=reason,
-        signal_refs=["strategy:breakout"], strategy_version="breakout",
+        token="USDC",
+        direction=Direction.HOLD,
+        size_pct=0.0,
+        rationale=reason,
+        signal_refs=["strategy:breakout"],
+        strategy_version="breakout",
     )
     return c, {"source": "breakout", "hold_reason": reason, "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}

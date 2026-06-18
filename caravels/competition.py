@@ -23,9 +23,9 @@ def update(state: CompetitionState, score: Score) -> CompetitionState:
         drawdown_pct = max(0.0, (peak - current_nav) / peak * 100.0)
     else:
         drawdown_pct = score.max_drawdown_pct if score.max_drawdown_pct is not None else 0.0
-        
+
     competition_day = score.end_timestamp.date().toordinal() - score.start_timestamp.date().toordinal() + 1
-    
+
     return CompetitionState(
         registration_status=state.registration_status,
         daily_trade_count=state.daily_trade_count,

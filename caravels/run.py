@@ -6,7 +6,6 @@ competition-ops state persistence. Start with: python -m caravels [--dry-run]
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
@@ -14,6 +13,7 @@ from datetime import UTC, datetime
 
 from . import competition as comp_ops
 from . import signal as helm_signal
+
 # from .bnb import BNBAdapter # Removed on purpose to avoid any confusion about live trading capabilities in this reference implementation
 from .cmc import CMCAdapter, seed_cmc_id_cache
 from .config import AppConfig
@@ -39,7 +39,12 @@ def run_loop(cfg: AppConfig) -> None:
     interval_s = int(os.getenv("CARAVELS_LOOP_INTERVAL_SECONDS", "").strip() or cfg.loop_interval_seconds)
     logger.info(
         "Caravels starting — strategy=%s dry_run=%s competition_mode=%s simulation_mode=%s interval=%ds agentic=%s",
-        cfg.strategy, cfg.dry_run, cfg.competition_mode, cfg.simulation_mode, interval_s, cfg.helm_agentic,
+        cfg.strategy,
+        cfg.dry_run,
+        cfg.competition_mode,
+        cfg.simulation_mode,
+        interval_s,
+        cfg.helm_agentic,
     )
 
     db = CaravelDB(cfg.db_path)
@@ -269,7 +274,7 @@ def _tick(cfg: AppConfig, db: CaravelDB, twak: TWAKAdapter, cmc: CMCAdapter, llm
         )
         logger.warning("CMC snapshot is stale — skipping tick")
         return competition_state
-    
+
     refresh_summary = refresh_pending_receipts(db, twak, snapshot=snapshot)
     if refresh_summary["refreshed"]:
         logger.info(
@@ -278,7 +283,7 @@ def _tick(cfg: AppConfig, db: CaravelDB, twak: TWAKAdapter, cmc: CMCAdapter, llm
             refresh_summary["confirmed"],
             refresh_summary["failed"],
             refresh_summary["pending"],
-                )
+        )
 
     # 2. Fetch portfolio from TWAK
     portfolio: PortfolioState = twak.get_portfolio(snapshot)
@@ -362,10 +367,7 @@ def _tick(cfg: AppConfig, db: CaravelDB, twak: TWAKAdapter, cmc: CMCAdapter, llm
         "agentic": diagnostics.get("source") == "agentic",
         "tools_called": diagnostics.get("tools_called", []),
         "n_actions": diagnostics.get("n_actions", 1),
-        "actions": diagnostics.get("actions", [
-            {"token": c.token, "direction": c.direction.value, "size_pct": c.size_pct}
-            for c in candidates if c.direction.value != "hold"
-        ]),
+        "actions": diagnostics.get("actions", [{"token": c.token, "direction": c.direction.value, "size_pct": c.size_pct} for c in candidates if c.direction.value != "hold"]),
     }
     if diagnostics:
         signal_payload.update(diagnostics)
@@ -380,6 +382,7 @@ def _tick(cfg: AppConfig, db: CaravelDB, twak: TWAKAdapter, cmc: CMCAdapter, llm
 
     # 6. Helm execution — batch (sequential, portfolio threaded between swaps)
     from .execution import execute_batch
+
     receipts = execute_batch(
         candidates,
         portfolio,
@@ -391,10 +394,7 @@ def _tick(cfg: AppConfig, db: CaravelDB, twak: TWAKAdapter, cmc: CMCAdapter, llm
         snapshot=snapshot,
     )
 
-    executed_count = sum(
-        1 for r in receipts
-        if r.execution_status.value in ("executed", "dry_run")
-    )
+    executed_count = sum(1 for r in receipts if r.execution_status.value in ("executed", "dry_run"))
     db.save_runtime_event(
         "execution_finished",
         phase="execution",
@@ -415,12 +415,12 @@ def _tick(cfg: AppConfig, db: CaravelDB, twak: TWAKAdapter, cmc: CMCAdapter, llm
             outcome = "risk_rejected"
         elif first_receipt.compliance_result and first_receipt.compliance_result.passed is False:
             outcome = "compliance_rejected"
-        batch_summary = (
-            f"{executed_count}/{len(receipts)} actions executed"
-            + (f" — {', '.join(r.candidate_action.token for r in receipts if r.execution_status.value in ('executed','dry_run') and r.candidate_action)}" if executed_count else "")
+        batch_summary = f"{executed_count}/{len(receipts)} actions executed" + (
+            f" — {', '.join(r.candidate_action.token for r in receipts if r.execution_status.value in ('executed', 'dry_run') and r.candidate_action)}" if executed_count else ""
         )
         _emit_helm_feedback(
-            db, llm,
+            db,
+            llm,
             loop_ref=loop_ref,
             receipt_id=first_receipt.receipt_id,
             outcome=outcome,

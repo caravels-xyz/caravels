@@ -7,17 +7,18 @@ from caravels import competition as comp
 from caravels.config import RISK_LIMITS
 from caravels.models import CompetitionState, RegistrationStatus
 
+
 class TestUpdateDrawdown:
     def test_no_drawdown_at_peak(self, healthy_score):
         state = CompetitionState(peak_nav_usd=1000.0, nav_usd=1000.0)
         score = healthy_score
-        
+
         updated = comp.update(state, score)
         assert updated.drawdown_pct == 0.0
 
     def test_10_pct_drawdown(self, healthy_score):
         state = CompetitionState(peak_nav_usd=1000.0, nav_usd=1000.0)
-        healthy_score.current_nav_usd=900.0  # Simulate a drop to $900
+        healthy_score.current_nav_usd = 900.0  # Simulate a drop to $900
         updated = comp.update(state, healthy_score)
         assert abs(updated.drawdown_pct - 10.0) < 0.01
 
@@ -34,7 +35,7 @@ class TestUpdateDrawdown:
 
     def test_floor_ok_false_when_nav_at_dust(self, healthy_score):
         state = CompetitionState(peak_nav_usd=1000.0, nav_usd=1000.0)
-        healthy_score.current_nav_usd=0.5  # Simulate a drop to $0.5
+        healthy_score.current_nav_usd = 0.5  # Simulate a drop to $0.5
         updated = comp.update(state, healthy_score)
         assert updated.floor_ok is False
 

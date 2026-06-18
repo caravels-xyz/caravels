@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 import json
 import logging
 import time
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -191,7 +191,7 @@ def create_app(cfg: AppConfig) -> Flask:
             "diagnostics": diagnostics,
             "net_pnl_usd": net_pnl_usd,
         }
-        
+
     def _trades_payload(limit: int = 10) -> list[dict]:
         return db.get_trades(limit=limit)
 
@@ -207,12 +207,12 @@ def create_app(cfg: AppConfig) -> Flask:
     @app.route("/api/status")
     def api_status():
         return jsonify(_status_payload())
-    
+
     @app.route("/api/trades")
     def api_trades():
         limit = request.args.get("limit", default=10, type=int)
         return jsonify(_trades_payload(limit=limit))
-    
+
     @app.route("/api/token_pnl")
     def api_token_pnl():
         return jsonify(db.get_token_pnl())

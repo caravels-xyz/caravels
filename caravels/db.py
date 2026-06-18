@@ -134,7 +134,7 @@ class CaravelDB:
             """,
             commit=True,
         )
-        
+
         self._execute(
             """
             CREATE VIEW IF NOT EXISTS trades_snapshot AS
@@ -215,7 +215,7 @@ class CaravelDB:
             """,
             commit=True,
         )
-        
+
         self._execute(
             """
             CREATE VIEW IF NOT EXISTS token_arbitrages AS
@@ -233,7 +233,7 @@ class CaravelDB:
             """,
             commit=True,
         )
-        
+
         self._execute(
             """
             CREATE VIEW IF NOT EXISTS token_pnl AS
@@ -510,7 +510,7 @@ class CaravelDB:
 
     def list_runtime_events(self, limit: int = 200) -> list[sqlite3.Row]:
         return self._execute("SELECT * FROM runtime_events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-    
+
     def get_last_signal_runtime_event(self) -> sqlite3.Row | None:
         return self._execute("SELECT * FROM runtime_events WHERE phase = 'signal' ORDER BY id DESC LIMIT 1").fetchone()
 
@@ -519,11 +519,9 @@ class CaravelDB:
             "SELECT * FROM runtime_events WHERE id > ? ORDER BY id ASC LIMIT ?",
             (last_id, limit),
         ).fetchall()
+
     def get_last_runtime_event_since(self, since: datetime) -> sqlite3.Row | None:
-        return self._execute(
-            "SELECT * FROM runtime_events WHERE datetime(timestamp) >= datetime(?) ORDER BY id ASC LIMIT 1",
-            (since.isoformat(),)
-        ).fetchone()
+        return self._execute("SELECT * FROM runtime_events WHERE datetime(timestamp) >= datetime(?) ORDER BY id ASC LIMIT 1", (since.isoformat(),)).fetchone()
 
     def get_bot_snapshot(self) -> dict[str, Any]:
         """Return a dict with start_nav_usd, end_nav_usd, live_pnl, peak_nav_usd, low_nav_usd, drawdown_pct, max_drawdown_pct."""
@@ -565,14 +563,17 @@ class CaravelDB:
             "start_timestamp": result["start_timestamp"],
             "end_timestamp": result["end_timestamp"],
         }
-        
+
     def get_trades(self, limit: int = 10) -> list[dict[str, Any]]:
-        rows = self._execute("""
+        rows = self._execute(
+            """
             SELECT * FROM trades
             WHERE datetime(timestamp) >= (
                 SELECT datetime(start_at) FROM scoring_time
             )
-            ORDER BY timestamp DESC LIMIT ?""", (limit,)).fetchall()
+            ORDER BY timestamp DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
         out = []
         for r in rows:
             out.append(
@@ -591,16 +592,19 @@ class CaravelDB:
                 }
             )
         return out
-    
+
     def get_trade_count_since_scoring_time(self, date: str) -> int:
-        result = self._execute("""
+        result = self._execute(
+            """
             SELECT count(1) AS trade_count FROM trades
             WHERE datetime(timestamp) >= (
                 SELECT datetime(start_at) FROM scoring_time
             )
-            AND date(timestamp) = ?""", (date,)).fetchone()
+            AND date(timestamp) = ?""",
+            (date,),
+        ).fetchone()
         return int(result["trade_count"] or 0)
-    
+
     def get_token_pnl(self) -> list[dict[str, Any]]:
         rows = self._execute("SELECT * FROM token_pnl ORDER BY pnl_usd DESC").fetchall()
         out = []

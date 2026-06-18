@@ -265,7 +265,7 @@ def execute(
 
 
 def execute_batch(
-    candidates: "list[CandidateAction]",
+    candidates: list[CandidateAction],
     portfolio: PortfolioState,
     competition_state: CompetitionState,
     cfg: AppConfig,
@@ -274,7 +274,7 @@ def execute_batch(
     *,
     snapshot_ref: str = "",
     snapshot: MarketSnapshot,
-) -> "list[DecisionReceipt]":
+) -> list[DecisionReceipt]:
     """Execute a ranked list of CandidateActions sequentially.
 
     After each EXECUTED swap the post-swap portfolio is threaded into the next
@@ -292,8 +292,11 @@ def execute_batch(
         logger.info(
             "execute_batch(%s): action %d/%d — %s %s %.1f%%",
             candidate.strategy_version,
-            i + 1, len(candidates),
-            candidate.direction.value, candidate.token, candidate.size_pct,
+            i + 1,
+            len(candidates),
+            candidate.direction.value,
+            candidate.token,
+            candidate.size_pct,
         )
         receipt = execute(
             candidate,
@@ -309,14 +312,12 @@ def execute_batch(
 
         # Thread post-swap portfolio forward so next action's risk eval sees
         # updated balances (prevents collective exposure-cap breaches).
-        if (
-            receipt.execution_status.value in ("executed", "dry_run")
-            and receipt.portfolio_state_after is not None
-        ):
+        if receipt.execution_status.value in ("executed", "dry_run") and receipt.portfolio_state_after is not None:
             working_portfolio = receipt.portfolio_state_after
             logger.debug(
                 "execute_batch: updated working_portfolio after %s swap, NAV=%.2f",
-                candidate.token, working_portfolio.nav_usd,
+                candidate.token,
+                working_portfolio.nav_usd,
             )
 
     return receipts

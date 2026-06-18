@@ -153,8 +153,8 @@ class AppConfig:
     simulated_fixed_cost_usd: float = 0.02
     scoring_start_at: str = ""
     # ── Agentic Helm (env vars) ──────────────────────────────────────────────────────
-    helm_agentic: bool = False        # CARAVELS_HELM_AGENTIC
-    helm_max_tool_rounds: int = 4     # CARAVELS_HELM_MAX_TOOL_ROUNDS
+    helm_agentic: bool = False  # CARAVELS_HELM_AGENTIC
+    helm_max_tool_rounds: int = 4  # CARAVELS_HELM_MAX_TOOL_ROUNDS
     helm_max_actions_per_tick: int = 2  # CARAVELS_HELM_MAX_ACTIONS_PER_TICK (1 = single-action mode)
 
     # ── Active strategy selector (settings.json or env CARAVELS_STRATEGY) ────────────
@@ -172,7 +172,7 @@ class AppConfig:
     momentum_size_scale_tier1: float = 0.50
 
     # ── Trend-following settings (settings.json) ─────────────────────────────
-    trend_momentum_threshold: float = 0.5    # minimum score to hold a token
+    trend_momentum_threshold: float = 0.5  # minimum score to hold a token
     trend_min_usdc_reserve_pct: float = 35.0
     trend_max_position_pct: float = 30.0
 
@@ -183,12 +183,12 @@ class AppConfig:
     mean_reversion_max_position_pct: float = 20.0
 
     # ── Volatility-target settings (settings.json) ───────────────────────────
-    vol_target_annual_pct: float = 40.0      # portfolio volatility target (annualised %)
+    vol_target_annual_pct: float = 40.0  # portfolio volatility target (annualised %)
     vol_target_min_usdc_reserve_pct: float = 35.0
     vol_target_max_position_pct: float = 25.0
 
     # ── Breakout settings (settings.json) ─────────────────────────────────
-    breakout_pivot_buffer_pct: float = 0.5   # % above R1/fib for confirmed breakout
+    breakout_pivot_buffer_pct: float = 0.5  # % above R1/fib for confirmed breakout
     breakout_min_usdc_reserve_pct: float = 35.0
     breakout_max_position_pct: float = 20.0
 
@@ -298,22 +298,32 @@ class AppConfig:
 
 _V2_ALIAS = "momentum_rebalance"
 _V1_ALIAS = "llm_oneshot"
-_VALID_STRATEGIES = frozenset({
-    "momentum_rebalance", "trend_following", "mean_reversion",
-    "volatility_target", "breakout", "llm_oneshot", "auto",
-})
+_VALID_STRATEGIES = frozenset(
+    {
+        "momentum_rebalance",
+        "trend_following",
+        "mean_reversion",
+        "volatility_target",
+        "breakout",
+        "llm_oneshot",
+        "auto",
+    }
+)
+
 
 def _resolve_strategy(s: dict) -> str:
     """Read strategy name from settings, mapping old v1/v2 values to new names."""
     import logging as _log
+
     _logger = _log.getLogger(__name__)
     raw = (os.getenv("CARAVELS_STRATEGY", "").strip() or s.get("strategy", "") or s.get("strategy_version", "")).strip().lower()
     mapping = {"v1": _V1_ALIAS, "v2": _V2_ALIAS}
     if raw in mapping:
         _logger.warning(
-            "settings strategy_version=%r is deprecated; interpreting as strategy=%r. "
-            "Update settings.json to use 'strategy': '%s'.",
-            raw, mapping[raw], mapping[raw],
+            "settings strategy_version=%r is deprecated; interpreting as strategy=%r. Update settings.json to use 'strategy': '%s'.",
+            raw,
+            mapping[raw],
+            mapping[raw],
         )
         return mapping[raw]
     if raw in _VALID_STRATEGIES:

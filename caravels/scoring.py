@@ -11,10 +11,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from .db import CaravelDB
-
 from .config import AppConfig
-
+from .db import CaravelDB
 from .models import Score
 
 

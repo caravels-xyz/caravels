@@ -16,7 +16,6 @@ import logging
 import math
 from typing import TYPE_CHECKING
 
-from ..config import STABLE_TOKENS
 from ..models import CandidateAction, CompetitionState, Direction, ExecutionMode, MarketSnapshot, PortfolioState, Score
 
 if TYPE_CHECKING:
@@ -58,29 +57,27 @@ def generate(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
-    llm: "LLMProvider",
-    cmc: "CMCAdapter | None" = None,
+    cfg: AppConfig,
+    score: Score,
+    llm: LLMProvider,
+    cmc: CMCAdapter | None = None,
     db=None,
-    
 ) -> tuple[CandidateAction, dict]:
     from ..signal import _generate_agentic, _stub_type
     from .momentum_rebalance import compute_diagnostics
 
     pre_diag = compute_diagnostics(snapshot, portfolio, competition, cfg, score)
 
-    if (
-        cfg.helm_agentic
-        and cmc is not None
-        and not getattr(cmc, "_stub", True)
-        and hasattr(llm, "complete_with_tools")
-        and not isinstance(llm, _stub_type())
-    ):
+    if cfg.helm_agentic and cmc is not None and not getattr(cmc, "_stub", True) and hasattr(llm, "complete_with_tools") and not isinstance(llm, _stub_type()):
         try:
             return _generate_agentic(
-                snapshot, cfg, llm, cmc,
-                portfolio=portfolio, competition=competition, score=score,
+                snapshot,
+                cfg,
+                llm,
+                cmc,
+                portfolio=portfolio,
+                competition=competition,
+                score=score,
                 system_prompt=VOLATILITY_TARGET_SYSTEM,
                 diagnostics_fn=compute_diagnostics,
                 strategy_name="volatility_target",
@@ -95,7 +92,7 @@ def _deterministic(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
+    cfg: AppConfig,
     pre_diag: dict,
     db=None,
 ) -> tuple[CandidateAction, dict]:
@@ -107,9 +104,7 @@ def _deterministic(
     if tier >= 3:
         lr = pre_diag.get("largest_risk_holding")
         if lr:
-            return _cand(lr["token"], Direction.SELL,
-                         min(cfg.risk.max_trade_size_pct, lr["usd"] / max(nav, 1) * 100),
-                         "tier3 survival", snapshot, pre_diag)
+            return _cand(lr["token"], Direction.SELL, min(cfg.risk.max_trade_size_pct, lr["usd"] / max(nav, 1) * 100), "tier3 survival", snapshot, pre_diag)
         return _hold("tier3 — no risk holdings", snapshot, pre_diag)
 
     candidates = list(pre_diag.get("momentum_scores", {}).keys())
@@ -131,6 +126,7 @@ def _deterministic(
         for t in candidates:
             try:
                 from ..indicators import realized_vol_annual
+
                 rv = realized_vol_annual(db, t, n_bars=20)
                 if rv is not None:
                     annual_vols[t] = max(rv, 0.01)
@@ -159,9 +155,7 @@ def _deterministic(
         best_sell = max((t for t in drifts if drifts[t] < -min_drift), key=lambda t: abs(drifts[t]), default=None)
         if best_sell:
             sz = min(abs(drifts[best_sell]), cfg.risk.max_trade_size_pct)
-            return _cand(best_sell, Direction.SELL, round(sz, 4),
-                         f"vol-target tier2 sell: drift={drifts[best_sell]:.2f}% vol={annual_vols[best_sell]:.2f}",
-                         snapshot, pre_diag)
+            return _cand(best_sell, Direction.SELL, round(sz, 4), f"vol-target tier2 sell: drift={drifts[best_sell]:.2f}% vol={annual_vols[best_sell]:.2f}", snapshot, pre_diag)
         return _hold("tier2 — no sell drift above threshold", snapshot, pre_diag)
 
     best_buy = max((t for t in drifts if drifts[t] > min_drift), key=lambda t: drifts[t], default=None)
@@ -172,16 +166,12 @@ def _deterministic(
         if tier >= 1:
             sz *= cfg.momentum_size_scale_tier1
         if sz >= 0.5:
-            return _cand(best_buy, Direction.BUY, round(sz, 4),
-                         f"vol-target buy: drift={drifts[best_buy]:.2f}% vol={annual_vols[best_buy]:.2f}",
-                         snapshot, pre_diag)
+            return _cand(best_buy, Direction.BUY, round(sz, 4), f"vol-target buy: drift={drifts[best_buy]:.2f}% vol={annual_vols[best_buy]:.2f}", snapshot, pre_diag)
 
     if best_sell is not None:
         sz = min(abs(drifts[best_sell]), current_weights.get(best_sell, 0.0), cfg.risk.max_trade_size_pct)
         if sz >= 0.5:
-            return _cand(best_sell, Direction.SELL, round(sz, 4),
-                         f"vol-target sell: drift={drifts[best_sell]:.2f}% vol={annual_vols[best_sell]:.2f}",
-                         snapshot, pre_diag)
+            return _cand(best_sell, Direction.SELL, round(sz, 4), f"vol-target sell: drift={drifts[best_sell]:.2f}% vol={annual_vols[best_sell]:.2f}", snapshot, pre_diag)
 
     return _hold("no vol-target drift above threshold", snapshot, pre_diag)
 
@@ -199,10 +189,13 @@ def _vol_proxy(feat, db, symbol: str) -> float:
 
 def _cand(token, direction, size_pct, rationale, snapshot, diag):
     c = CandidateAction(
-        token=token, direction=direction, size_pct=max(0.0, size_pct),
+        token=token,
+        direction=direction,
+        size_pct=max(0.0, size_pct),
         rationale=rationale,
         signal_refs=[f"snapshot:{snapshot.timestamp.isoformat()}", "strategy:volatility_target"],
-        execution_mode=ExecutionMode.MARKET, execution_mode_rationale="volatility_target market swap",
+        execution_mode=ExecutionMode.MARKET,
+        execution_mode_rationale="volatility_target market swap",
         strategy_version="volatility_target",
     )
     return c, {"source": "volatility_target", "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}
@@ -210,7 +203,11 @@ def _cand(token, direction, size_pct, rationale, snapshot, diag):
 
 def _hold(reason, snapshot, diag):
     c = CandidateAction(
-        token="USDC", direction=Direction.HOLD, size_pct=0.0, rationale=reason,
-        signal_refs=["strategy:volatility_target"], strategy_version="volatility_target",
+        token="USDC",
+        direction=Direction.HOLD,
+        size_pct=0.0,
+        rationale=reason,
+        signal_refs=["strategy:volatility_target"],
+        strategy_version="volatility_target",
     )
     return c, {"source": "volatility_target", "hold_reason": reason, "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}

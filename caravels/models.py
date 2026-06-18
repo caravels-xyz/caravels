@@ -79,17 +79,17 @@ class TokenFeatures:
     # Extended CMC TA fields — parsed from get_crypto_technical_analysis
     rsi_7: float | None = None
     rsi_21: float | None = None
-    ema_50: float | None = None   # exponential_moving_average_50_day
+    ema_50: float | None = None  # exponential_moving_average_50_day
     ema_200: float | None = None  # exponential_moving_average_200_day
-    sma_20: float | None = None   # simple_moving_average_20_day
-    sma_50: float | None = None   # simple_moving_average_50_day
+    sma_20: float | None = None  # simple_moving_average_20_day
+    sma_50: float | None = None  # simple_moving_average_50_day
     sma_200: float | None = None  # simple_moving_average_200_day
     # Pivot points (classic floor-trader pivots)
-    pivot_pp: float | None = None   # pivot point
-    pivot_r1: float | None = None   # resistance 1
-    pivot_r2: float | None = None   # resistance 2
-    pivot_s1: float | None = None   # support 1
-    pivot_s2: float | None = None   # support 2
+    pivot_pp: float | None = None  # pivot point
+    pivot_r1: float | None = None  # resistance 1
+    pivot_r2: float | None = None  # resistance 2
+    pivot_s1: float | None = None  # support 1
+    pivot_s2: float | None = None  # support 2
     # Fibonacci retracement levels (price levels, not ratios)
     fib_23_6: float | None = None
     fib_38_2: float | None = None
@@ -258,6 +258,7 @@ class DecisionReceipt:
 
     # rejection
     rejection_reasons: list[str] = field(default_factory=list)
+
 
 # ── Scoring snapshot ─────────────────────────────────────────────────────────
 @dataclass

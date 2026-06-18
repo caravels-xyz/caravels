@@ -159,14 +159,16 @@ CMC_SKILL_SPECS: list[dict] = [
 ALL_TOOL_SPECS: list[dict] = CMC_MCP_TOOL_SPECS + CMC_SKILL_SPECS
 
 # Tools that require a symbol → CMC numeric id conversion before calling.
-_ID_REQUIRED_TOOLS: frozenset[str] = frozenset({
-    "get_crypto_technical_analysis",
-    "get_crypto_quotes_latest",
-    "get_crypto_metrics",
-    "get_crypto_latest_news",
-    "kline_pattern_recognition",
-    "altcoin_token_profile",
-})
+_ID_REQUIRED_TOOLS: frozenset[str] = frozenset(
+    {
+        "get_crypto_technical_analysis",
+        "get_crypto_quotes_latest",
+        "get_crypto_metrics",
+        "get_crypto_latest_news",
+        "kline_pattern_recognition",
+        "altcoin_token_profile",
+    }
+)
 
 # Skill tool names — dispatched by name via MCP session.
 _SKILL_TOOL_NAMES: frozenset[str] = frozenset(s["name"] for s in CMC_SKILL_SPECS)
@@ -270,6 +272,7 @@ class CMCAdapter:
         raw = result.content[0].text if (result and result.content) else "{}"
         try:
             import json as _json
+
             parsed = _json.loads(raw)
             return parsed if isinstance(parsed, dict) else {"data": parsed, "raw": raw[:400]}
         except Exception:

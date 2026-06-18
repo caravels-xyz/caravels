@@ -15,7 +15,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from ..config import STABLE_TOKENS
 from ..models import CandidateAction, CompetitionState, Direction, ExecutionMode, MarketSnapshot, PortfolioState, Score
 
 if TYPE_CHECKING:
@@ -51,27 +50,26 @@ def generate(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
-    llm: "LLMProvider",
-    cmc: "CMCAdapter | None" = None,
+    cfg: AppConfig,
+    score: Score,
+    llm: LLMProvider,
+    cmc: CMCAdapter | None = None,
 ) -> tuple[CandidateAction, dict]:
     from ..signal import _generate_agentic, _stub_type
     from .momentum_rebalance import compute_diagnostics
 
     pre_diag = compute_diagnostics(snapshot, portfolio, competition, cfg, score)
 
-    if (
-        cfg.helm_agentic
-        and cmc is not None
-        and not getattr(cmc, "_stub", True)
-        and hasattr(llm, "complete_with_tools")
-        and not isinstance(llm, _stub_type())
-    ):
+    if cfg.helm_agentic and cmc is not None and not getattr(cmc, "_stub", True) and hasattr(llm, "complete_with_tools") and not isinstance(llm, _stub_type()):
         try:
             return _generate_agentic(
-                snapshot, cfg, llm, cmc,
-                portfolio=portfolio, competition=competition, score=score,
+                snapshot,
+                cfg,
+                llm,
+                cmc,
+                portfolio=portfolio,
+                competition=competition,
+                score=score,
                 system_prompt=MEAN_REVERSION_SYSTEM,
                 diagnostics_fn=compute_diagnostics,
                 strategy_name="mean_reversion",
@@ -86,7 +84,7 @@ def _deterministic(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
+    cfg: AppConfig,
     pre_diag: dict,
 ) -> tuple[CandidateAction, dict]:
     nav = pre_diag["nav"]
@@ -103,7 +101,7 @@ def _deterministic(
         return _hold("tier3 — no risk holdings", snapshot, pre_diag)
 
     # Score each candidate for mean-reversion signal strength
-    buy_signals: list[tuple[float, str, str]] = []   # (strength, token, reason)
+    buy_signals: list[tuple[float, str, str]] = []  # (strength, token, reason)
     sell_signals: list[tuple[float, str, str]] = []
 
     for t in pre_diag.get("momentum_scores", {}):
@@ -169,10 +167,13 @@ def _nearest_resistance(feat) -> float | None:
 
 def _cand(token, direction, size_pct, rationale, snapshot, diag):
     c = CandidateAction(
-        token=token, direction=direction, size_pct=max(0.0, size_pct),
+        token=token,
+        direction=direction,
+        size_pct=max(0.0, size_pct),
         rationale=rationale,
         signal_refs=[f"snapshot:{snapshot.timestamp.isoformat()}", "strategy:mean_reversion"],
-        execution_mode=ExecutionMode.MARKET, execution_mode_rationale="mean_reversion market swap",
+        execution_mode=ExecutionMode.MARKET,
+        execution_mode_rationale="mean_reversion market swap",
         strategy_version="mean_reversion",
     )
     return c, {"source": "mean_reversion", "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}
@@ -180,7 +181,11 @@ def _cand(token, direction, size_pct, rationale, snapshot, diag):
 
 def _hold(reason, snapshot, diag):
     c = CandidateAction(
-        token="USDC", direction=Direction.HOLD, size_pct=0.0, rationale=reason,
-        signal_refs=["strategy:mean_reversion"], strategy_version="mean_reversion",
+        token="USDC",
+        direction=Direction.HOLD,
+        size_pct=0.0,
+        rationale=reason,
+        signal_refs=["strategy:mean_reversion"],
+        strategy_version="mean_reversion",
     )
     return c, {"source": "mean_reversion", "hold_reason": reason, "tier": diag["tier"], "dd_ratio": diag["dd_ratio"]}

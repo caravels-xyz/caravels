@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Callable, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -165,18 +166,20 @@ class MistralProvider:
                 return msg.content or ""
 
             # Append the assistant turn with tool_calls.
-            messages.append({
-                "role": "assistant",
-                "content": msg.content or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-                    }
-                    for tc in msg.tool_calls
-                ],
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": msg.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                        }
+                        for tc in msg.tool_calls
+                    ],
+                }
+            )
 
             # Execute each tool call and append the results.
             for tc in msg.tool_calls:
@@ -189,12 +192,14 @@ class MistralProvider:
                     result = tool_executor(fn_name, fn_args or {})
                 except Exception as exc:
                     result = {"error": str(exc)}
-                messages.append({
-                    "role": "tool",
-                    "name": fn_name,
-                    "tool_call_id": tc.id,
-                    "content": json.dumps(result, default=str)[:4000],
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "name": fn_name,
+                        "tool_call_id": tc.id,
+                        "content": json.dumps(result, default=str)[:4000],
+                    }
+                )
                 logger.debug("Tool call round=%d name=%s result_keys=%s", round_num + 1, fn_name, list(result.keys()) if isinstance(result, dict) else "?")
 
         # Max rounds exhausted — do a final no-tools call for the decision.

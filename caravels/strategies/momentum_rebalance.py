@@ -79,29 +79,29 @@ token,direction,size_pct,rationale,prose_rationale
 
 # ── Deterministic entry-point ─────────────────────────────────────────────────
 
+
 def generate(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
-    llm: "LLMProvider",
-    cmc: "CMCAdapter | None" = None,
+    cfg: AppConfig,
+    score: Score,
+    llm: LLMProvider,
+    cmc: CMCAdapter | None = None,
 ) -> tuple[CandidateAction, dict]:
     """Momentum-rebalance: deterministic by default, agentic when helm_agentic=True."""
-    from ..signal import _generate_agentic, _generate_llm_with_system, _stub_type
+    from ..signal import _generate_agentic, _stub_type
 
-    if (
-        cfg.helm_agentic
-        and cmc is not None
-        and not getattr(cmc, "_stub", True)
-        and hasattr(llm, "complete_with_tools")
-        and not isinstance(llm, _stub_type())
-    ):
+    if cfg.helm_agentic and cmc is not None and not getattr(cmc, "_stub", True) and hasattr(llm, "complete_with_tools") and not isinstance(llm, _stub_type()):
         try:
             return _generate_agentic(
-                snapshot, cfg, llm, cmc,
-                portfolio=portfolio, competition=competition, score=score,
+                snapshot,
+                cfg,
+                llm,
+                cmc,
+                portfolio=portfolio,
+                competition=competition,
+                score=score,
                 system_prompt=MOMENTUM_REBALANCE_SYSTEM,
                 diagnostics_fn=compute_diagnostics,
                 strategy_name="momentum_rebalance",
@@ -116,8 +116,8 @@ def _deterministic(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score",
+    cfg: AppConfig,
+    score: Score,
 ) -> tuple[CandidateAction, dict]:
     """Pure deterministic momentum-rebalance (no LLM)."""
     diag = compute_diagnostics(snapshot, portfolio, competition, cfg, score)
@@ -135,10 +135,13 @@ def _deterministic(
         lr = diag.get("largest_risk_holding")
         if lr:
             return _make_candidate(
-                lr["token"], Direction.SELL,
+                lr["token"],
+                Direction.SELL,
                 min(cfg.risk.max_trade_size_pct * 0.5, lr["usd"] / max(nav, 1) * 100),
                 f"tier3 survival: sell {lr['token']} drawdown-ratio={dd_ratio:.2f}",
-                snapshot, cfg, diag,
+                snapshot,
+                cfg,
+                diag,
             )
         return _hold_candidate("tier3 hold — no risk holdings", snapshot, cfg, diag)
 
@@ -148,10 +151,13 @@ def _deterministic(
         lr = diag.get("largest_risk_holding")
         if lr:
             return _make_candidate(
-                lr["token"], Direction.SELL,
+                lr["token"],
+                Direction.SELL,
                 min(cfg.risk.max_trade_size_pct, lr["usd"] / max(nav, 1) * 100),
                 f"weak momentum: sell {lr['token']} score≤0",
-                snapshot, cfg, diag,
+                snapshot,
+                cfg,
+                diag,
             )
         return _hold_candidate("weak momentum — no risk holdings", snapshot, cfg, diag)
 
@@ -177,16 +183,14 @@ def _deterministic(
     if tier >= 1:
         size_pct *= cfg.momentum_size_scale_tier1
         if size_pct < 0.5:
-            return _hold_candidate(f"tier1 size-reduction below 0.5% threshold", snapshot, cfg, diag)
+            return _hold_candidate("tier1 size-reduction below 0.5% threshold", snapshot, cfg, diag)
 
-    rationale = (
-        f"momentum_rebalance: {direction.value} {best_token} "
-        f"drift={best_drift:+.2f}% tier={tier} score={scores.get(best_token, 0):.2f}"
-    )
+    rationale = f"momentum_rebalance: {direction.value} {best_token} drift={best_drift:+.2f}% tier={tier} score={scores.get(best_token, 0):.2f}"
     return _make_candidate(best_token, direction, round(size_pct, 4), rationale, snapshot, cfg, diag)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_candidate(
     token: str,
@@ -194,7 +198,7 @@ def _make_candidate(
     size_pct: float,
     rationale: str,
     snapshot: MarketSnapshot,
-    cfg: "AppConfig",
+    cfg: AppConfig,
     diag: dict,
 ) -> tuple[CandidateAction, dict]:
     size_pct = max(0.0, min(size_pct, cfg.risk.max_trade_size_pct))
@@ -221,7 +225,7 @@ def _make_candidate(
     return candidate, out_diag
 
 
-def _hold_candidate(reason: str, snapshot: MarketSnapshot, cfg: "AppConfig", diag: dict) -> tuple[CandidateAction, dict]:
+def _hold_candidate(reason: str, snapshot: MarketSnapshot, cfg: AppConfig, diag: dict) -> tuple[CandidateAction, dict]:
     candidate = CandidateAction(
         token="USDC",
         direction=Direction.HOLD,
@@ -237,50 +241,40 @@ def compute_diagnostics(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     competition: CompetitionState,
-    cfg: "AppConfig",
-    score: "Score | dict | None" = None,
+    cfg: AppConfig,
+    score: Score | dict | None = None,
 ) -> dict:
     """Pre-compute momentum-rebalance diagnostics (drifts, target weights, tier, etc.)."""
     nav = max(float(portfolio.nav_usd or 0.0), 0.0)
     dq_threshold = max(
-        float(getattr(score, "dq_drawdown_threshold_pct", None) or
-              (score or {}).get("dq_drawdown_threshold_pct") if not hasattr(score, "dq_drawdown_threshold_pct") else score.dq_drawdown_threshold_pct
-              or cfg.risk.dq_drawdown_pct), 0.01,
+        float(
+            getattr(score, "dq_drawdown_threshold_pct", None) or (score or {}).get("dq_drawdown_threshold_pct")
+            if not hasattr(score, "dq_drawdown_threshold_pct")
+            else score.dq_drawdown_threshold_pct or cfg.risk.dq_drawdown_pct
+        ),
+        0.01,
     )
     _dd_raw = getattr(score, "max_drawdown_pct", None) if score else None
     if _dd_raw is None and isinstance(score, dict):
         _dd_raw = score.get("max_drawdown_pct")
     dd_ratio = max(float(_dd_raw or competition.drawdown_pct or 0.0), 0.0) / dq_threshold
 
-    tier = (
-        3 if dd_ratio >= cfg.momentum_tier3_drawdown_ratio else
-        2 if dd_ratio >= cfg.momentum_tier2_drawdown_ratio else
-        1 if dd_ratio >= cfg.momentum_tier1_drawdown_ratio else
-        0
-    )
+    tier = 3 if dd_ratio >= cfg.momentum_tier3_drawdown_ratio else 2 if dd_ratio >= cfg.momentum_tier2_drawdown_ratio else 1 if dd_ratio >= cfg.momentum_tier1_drawdown_ratio else 0
 
     holdings = {k.upper(): float(v or 0.0) for k, v in (portfolio.holdings or {}).items()}
     risk_budget_pct = max(0.0, 100.0 - cfg.momentum_min_usdc_reserve_pct)
 
-    candidates = [
-        t.upper() for t in snapshot.tokens
-        if t.upper() in cfg.eligible_tokens and t.upper() not in STABLE_TOKENS
-    ]
+    candidates = [t.upper() for t in snapshot.tokens if t.upper() in cfg.eligible_tokens and t.upper() not in STABLE_TOKENS]
     scores = {t: token_score(snapshot.get(t)) for t in candidates if snapshot.get(t) is not None}
 
     positive = {t: max(0.0, s) for t, s in scores.items()}
     total_pos = sum(positive.values())
-    target = {
-        t: (min(cfg.momentum_max_target_weight_pct, risk_budget_pct * positive[t] / total_pos) if total_pos > 0 else 0.0)
-        for t in candidates
-    }
+    target = {t: (min(cfg.momentum_max_target_weight_pct, risk_budget_pct * positive[t] / total_pos) if total_pos > 0 else 0.0) for t in candidates}
     current = {t: (holdings.get(t, 0.0) / nav * 100.0) if nav > 0 else 0.0 for t in candidates}
     drifts = {t: target[t] - current[t] for t in candidates}
     best_drift_token = max(candidates, key=lambda t: abs(drifts.get(t, 0.0))) if candidates else None
     best_drift_pct = drifts.get(best_drift_token, 0.0) if best_drift_token else 0.0
-    est_cost_pct = (
-        (cfg.simulated_cost_bps / 100.0) + (cfg.simulated_fixed_cost_usd / max(nav, 1) * 100.0)
-    ) if nav > 0 else 0.0
+    est_cost_pct = ((cfg.simulated_cost_bps / 100.0) + (cfg.simulated_fixed_cost_usd / max(nav, 1) * 100.0)) if nav > 0 else 0.0
     min_drift = max(cfg.momentum_rebalance_drift_pct, est_cost_pct * 2.0)
 
     risk_rows = [(t, v) for t, v in holdings.items() if t not in STABLE_TOKENS and v > 0]
@@ -307,9 +301,7 @@ def compute_diagnostics(
         "min_drift_pct": round(min_drift, 4),
         "max_size_pct": cfg.risk.max_trade_size_pct,
         "has_positive_momentum": total_pos > 0,
-        "largest_risk_holding": (
-            {"token": largest_risk[0], "usd": round(largest_risk[1], 2)} if largest_risk else None
-        ),
+        "largest_risk_holding": ({"token": largest_risk[0], "usd": round(largest_risk[1], 2)} if largest_risk else None),
     }
 
 

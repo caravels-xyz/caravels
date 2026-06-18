@@ -102,7 +102,7 @@ def choose_execution_mode(
 
 
 def choose_strategy_auto(
-    snapshot: "TokenFeatures | None",
+    snapshot: TokenFeatures | None,
     portfolio,
     cfg: AppConfig,
 ) -> str:
@@ -130,10 +130,7 @@ def choose_strategy_auto(
         avg_rsi += rsi
         n += 1
         # Pivot breakout signal
-        if (
-            feat.price_usd and feat.pivot_r1
-            and feat.price_usd > feat.pivot_r1 * (1 + cfg.breakout_pivot_buffer_pct / 100)
-        ):
+        if feat.price_usd and feat.pivot_r1 and feat.price_usd > feat.pivot_r1 * (1 + cfg.breakout_pivot_buffer_pct / 100):
             any_breakout = True
 
     if n > 0:

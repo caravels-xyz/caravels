@@ -3,15 +3,15 @@
 Each strategy module exposes a generate() function with signature:
     generate(snapshot, portfolio, competition, cfg, score, llm, cmc) -> (CandidateAction, dict)
 """
+
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..config import AppConfig
-    from ..llm import LLMProvider
-    from ..models import CandidateAction, CompetitionState, MarketSnapshot, PortfolioState, Score
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +36,12 @@ def resolve(strategy: str) -> Callable:
 def _ensure_registered() -> None:
     if _REGISTRY:
         return
-    from .momentum_rebalance import generate as _momentum
-    from .trend_following import generate as _trend
-    from .mean_reversion import generate as _mean_rev
-    from .volatility_target import generate as _vol_target
     from .breakout import generate as _breakout
     from .llm_oneshot import generate as _llm_oneshot
+    from .mean_reversion import generate as _mean_rev
+    from .momentum_rebalance import generate as _momentum
+    from .trend_following import generate as _trend
+    from .volatility_target import generate as _vol_target
 
     _register("momentum_rebalance", _momentum)
     _register("trend_following", _trend)

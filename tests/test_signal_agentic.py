@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Callable
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-
+from caravels import signal as helm_signal
 from caravels.config import AppConfig
-from caravels.llm import StubProvider, _MAX_TOOL_ROUNDS, parse_csv_response
+from caravels.llm import _MAX_TOOL_ROUNDS, StubProvider
 from caravels.models import (
     CandidateAction,
     CompetitionState,
@@ -20,8 +18,6 @@ from caravels.models import (
     Score,
     TokenFeatures,
 )
-from caravels import signal as helm_signal
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -30,12 +26,24 @@ def _snapshot() -> MarketSnapshot:
     return MarketSnapshot(
         tokens={
             "ETH": TokenFeatures(
-                token="ETH", price_usd=2000.0, rsi_14=45.0, macd=5.0, macd_signal=3.0,
-                ema_20=1950.0, fear_greed=40.0, price_change_24h_pct=2.0,
+                token="ETH",
+                price_usd=2000.0,
+                rsi_14=45.0,
+                macd=5.0,
+                macd_signal=3.0,
+                ema_20=1950.0,
+                fear_greed=40.0,
+                price_change_24h_pct=2.0,
             ),
             "AVAX": TokenFeatures(
-                token="AVAX", price_usd=25.0, rsi_14=30.0, macd=0.5, macd_signal=0.3,
-                ema_20=24.0, fear_greed=40.0, price_change_24h_pct=3.0,
+                token="AVAX",
+                price_usd=25.0,
+                rsi_14=30.0,
+                macd=0.5,
+                macd_signal=0.3,
+                ema_20=24.0,
+                fear_greed=40.0,
+                price_change_24h_pct=3.0,
             ),
         },
         timestamp=datetime.now(UTC),
@@ -78,6 +86,7 @@ class TestStubProviderToolLoop:
 class TestCMCCallToolStub:
     def test_stub_returns_stub_dict(self):
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="", stub=True)
         result = cmc.call_tool("get_global_metrics_latest", {})
         assert result.get("stub") is True
@@ -85,12 +94,14 @@ class TestCMCCallToolStub:
 
     def test_stub_with_symbol_arg(self):
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="", stub=True)
         result = cmc.call_tool("get_crypto_technical_analysis", {"symbol": "ETH"})
         assert result.get("stub") is True
 
     def test_all_tool_specs_have_required_keys(self):
         from caravels.cmc import ALL_TOOL_SPECS
+
         for spec in ALL_TOOL_SPECS:
             assert "name" in spec
             assert "description" in spec
@@ -107,8 +118,9 @@ class TestAgenticFlagGate:
         cfg = _cfg(helm_agentic=False)
         stub = StubProvider()
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="key", stub=False)
-        
+
         candidate, diag = helm_signal.generate(_snapshot(), cfg, stub, portfolio=_portfolio(), competition=_competition(), score=healthy_score, cmc=cmc)
         assert diag.get("source") != "agentic"
 
@@ -116,8 +128,9 @@ class TestAgenticFlagGate:
         cfg = _cfg(helm_agentic=True)
         stub = StubProvider()
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="key", stub=False)
-        
+
         candidate, diag = helm_signal.generate(_snapshot(), cfg, stub, portfolio=_portfolio(), competition=_competition(), score=healthy_score, cmc=cmc)
         assert diag.get("source") != "agentic", "Stub LLM must never use agentic path"
 
@@ -138,9 +151,14 @@ class FakeMistralLLM:
         return self._final
 
     def complete_with_tools(
-        self, system: str, user: str, tools: list[dict],
-        tool_executor: Callable[[str, dict], dict], *,
-        max_tokens: int = 512, max_rounds: int = _MAX_TOOL_ROUNDS,
+        self,
+        system: str,
+        user: str,
+        tools: list[dict],
+        tool_executor: Callable[[str, dict], dict],
+        *,
+        max_tokens: int = 512,
+        max_rounds: int = _MAX_TOOL_ROUNDS,
     ) -> str:
         # One tool call round.
         args: dict = {}
@@ -154,16 +172,22 @@ class TestAgenticToolLoop:
 
     def _run(self, score: Score, final_resp: str, tool_name: str = "get_global_metrics_latest") -> tuple[CandidateAction, dict]:
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="key", stub=True)  # stub so no real network
         llm = FakeMistralLLM(tool_name=tool_name, final_response=final_resp)
         cfg = _cfg(helm_agentic=True)
-        
+
         # Monkey-patch stub check so fake LLM is allowed.
         with patch.object(helm_signal, "_stub_type", return_value=type(None)):
             with patch.object(cmc, "_stub", False):
                 candidates, diag = helm_signal.generate(
-                    _snapshot(), cfg, llm,
-                    portfolio=_portfolio(), competition=_competition(), cmc=cmc, score=score,
+                    _snapshot(),
+                    cfg,
+                    llm,
+                    portfolio=_portfolio(),
+                    competition=_competition(),
+                    cmc=cmc,
+                    score=score,
                 )
         return candidates[0], diag
 
@@ -187,16 +211,22 @@ class TestAgenticToolLoop:
     def test_agentic_parse_failure_falls_back_to_llm(self, healthy_score):
         """If the agentic LLM returns garbage, generate() must not crash."""
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="key", stub=True)
         llm = FakeMistralLLM(final_response="garbage output no csv here")
         cfg = _cfg(helm_agentic=True)
-        
+
         with patch.object(helm_signal, "_stub_type", return_value=type(None)):
             with patch.object(cmc, "_stub", False):
                 # Falls back gracefully — should not raise.
                 candidates, diag = helm_signal.generate(
-                    _snapshot(), cfg, llm,
-                    portfolio=_portfolio(), competition=_competition(), cmc=cmc, score=healthy_score,
+                    _snapshot(),
+                    cfg,
+                    llm,
+                    portfolio=_portfolio(),
+                    competition=_competition(),
+                    cmc=cmc,
+                    score=healthy_score,
                 )
         # Fallback produces a valid candidate (may be HOLD from stub fallback).
         assert isinstance(candidates[0], CandidateAction)
@@ -208,10 +238,11 @@ class TestAgenticToolLoop:
 class TestWeakSignalGuard:
     def _run_with_snapshot(self, snapshot: MarketSnapshot, score: Score, final_resp: str) -> tuple[CandidateAction, dict]:
         from caravels.cmc import CMCAdapter
+
         cmc = CMCAdapter(api_key="key", stub=True)
         llm = FakeMistralLLM(final_response=final_resp)
         cfg = _cfg(helm_agentic=True)
-        
+
         with patch.object(helm_signal, "_stub_type", return_value=type(None)):
             with patch.object(cmc, "_stub", False):
                 candidates, diag = helm_signal.generate(snapshot, cfg, llm, portfolio=_portfolio(), competition=_competition(), score=score, cmc=cmc)
@@ -244,9 +275,12 @@ class TestChurnGuard:
         """Cost-effectiveness guard forces HOLD when trade is too small to clear fees."""
         from caravels.cmc import CMCAdapter
         from caravels.strategies import momentum_rebalance as mr_mod
+
         cmc = CMCAdapter(api_key="key", stub=True)
         small_drift_diag = {
-            "nav": 100.0, "tier": 0, "dd_ratio": 0.0,
+            "nav": 100.0,
+            "tier": 0,
+            "dd_ratio": 0.0,
             "tier_thresholds": {"tier1": 0.70, "tier2": 0.85, "tier3": 0.95},
             "tier1_size_scale": 0.5,
             "momentum_scores": {"ETH": 1.5},
@@ -262,13 +296,20 @@ class TestChurnGuard:
         cfg = _cfg(helm_agentic=True, simulated_cost_bps=10)
         llm = FakeMistralLLM(final_response="ETH,buy,0.01,tiny buy,too small to matter")
 
-        with patch.object(helm_signal, "_stub_type", return_value=type(None)), \
-             patch.object(mr_mod, "compute_diagnostics", return_value=small_drift_diag), \
-             patch.object(cmc, "call_tool", return_value={"stub": True}), \
-             patch.object(cmc, "_stub", False):
+        with (
+            patch.object(helm_signal, "_stub_type", return_value=type(None)),
+            patch.object(mr_mod, "compute_diagnostics", return_value=small_drift_diag),
+            patch.object(cmc, "call_tool", return_value={"stub": True}),
+            patch.object(cmc, "_stub", False),
+        ):
             candidates, diag = helm_signal.generate(
-                _snapshot(), cfg, llm,
-                portfolio=_portfolio(), competition=_competition(), score=healthy_score, cmc=cmc,
+                _snapshot(),
+                cfg,
+                llm,
+                portfolio=_portfolio(),
+                competition=_competition(),
+                score=healthy_score,
+                cmc=cmc,
             )
         candidate = candidates[0]
         assert candidate.direction == Direction.HOLD, f"Expected HOLD for dust trade, got {candidate.direction}; guard={diag.get('guard_reason')}"
@@ -289,10 +330,14 @@ class TestNonRegression:
     def test_standard_path_with_portfolio(self, healthy_score):
         stub = StubProvider()
         cfg = _cfg(helm_agentic=False)
-        
+
         candidates, diag = helm_signal.generate(
-            _snapshot(), cfg, stub,
-            portfolio=_portfolio(), competition=_competition(), score=healthy_score,
+            _snapshot(),
+            cfg,
+            stub,
+            portfolio=_portfolio(),
+            competition=_competition(),
+            score=healthy_score,
         )
         assert isinstance(candidates[0], CandidateAction)
         assert "tier" in diag or "source" in diag

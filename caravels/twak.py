@@ -706,7 +706,7 @@ class TWAKAdapter:
                     logger.warning("TWAK swap raised approval-sent failure; waiting for allowance to settle before retrying")
                     time.sleep(5)
                     continue
-                logger.error("TWAK swap raised unexpectedly: %s", exc)              
+                logger.error("TWAK swap raised unexpectedly: %s", exc)
                 return ExecutionResult(status=ExecutionStatus.FAILED, error=str(exc))
 
         return ExecutionResult(status=ExecutionStatus.FAILED, error="approval retry exhausted")

@@ -145,7 +145,7 @@ def generate(
     portfolio: PortfolioState,
     competition: CompetitionState,
     score: Score,
-    cmc: "CMCAdapter | None" = None,
+    cmc: CMCAdapter | None = None,
 ) -> tuple[list[CandidateAction], dict]:
     """Dispatch to the active named strategy via the strategy registry.
 
@@ -161,6 +161,7 @@ def generate(
 
     if strategy_name == "auto":
         from .regime import choose_strategy_auto
+
         strategy_name = choose_strategy_auto(snapshot, portfolio, cfg)
         logger.info("Helm auto-select chose strategy=%s", strategy_name)
 
@@ -179,6 +180,7 @@ def generate(
 def _stub_type():
     """Return StubProvider class lazily to avoid circular dependency."""
     from .llm import StubProvider
+
     return StubProvider
 
 
@@ -186,7 +188,7 @@ def _generate_agentic(
     snapshot: MarketSnapshot,
     cfg: AppConfig,
     llm: LLMProvider,
-    cmc: "CMCAdapter",
+    cmc: CMCAdapter,
     *,
     portfolio: PortfolioState,
     competition: CompetitionState,
@@ -218,6 +220,7 @@ def _generate_agentic(
     # The model must call tools to gather TA and compute momentum scores itself.
     user_prompt = _build_agentic_prompt(snapshot, portfolio, cfg, pre_diag)
     logger.debug("Helm agentic system prompt:\n%s", user_prompt)
+
     def _executor(name: str, args: dict) -> dict:
         tools_called.append(name)
         logger.info("Helm agentic tool call: %s %s", name, args)
@@ -278,10 +281,7 @@ def _generate_agentic(
         if guard_reason is None and direction != Direction.HOLD and pre_diag is not None:
             nav = pre_diag.get("nav", 0.0)
             if nav > 0:
-                est_cost_pct = (
-                    (cfg.simulated_cost_bps / 100.0)
-                    + (cfg.simulated_fixed_cost_usd / nav * 100.0)
-                )
+                est_cost_pct = (cfg.simulated_cost_bps / 100.0) + (cfg.simulated_fixed_cost_usd / nav * 100.0)
                 if size_pct < est_cost_pct * 2:
                     guard_reason = f"churn: size {size_pct:.2f}% < 2× cost {est_cost_pct:.2f}%"
 
@@ -292,9 +292,7 @@ def _generate_agentic(
             rationale = f"HOLD (guard: {guard_reason})"
             prose_rationale = guard_reason
 
-        cand, cand_diag = _build_candidate(
-            token, direction, size_pct, rationale, prose_rationale, snapshot, cfg, pre_diag, strategy_name=strategy_name
-        )
+        cand, cand_diag = _build_candidate(token, direction, size_pct, rationale, prose_rationale, snapshot, cfg, pre_diag, strategy_name=strategy_name)
         cand_diag["source"] = "agentic"
         cand_diag["guard_reason"] = guard_reason
         candidates.append(cand)
@@ -304,10 +302,7 @@ def _generate_agentic(
         raise ValueError("agentic LLM parse failed: no valid candidates after filtering")
 
     # Separate actionable (non-HOLD) from HOLDs; rank actionable by |drift| desc.
-    actionable = [
-        (c, d) for c, d in zip(candidates, action_diags, strict=False)
-        if c.direction != Direction.HOLD
-    ]
+    actionable = [(c, d) for c, d in zip(candidates, action_diags, strict=False) if c.direction != Direction.HOLD]
     drift_key = lambda pair: abs((pre_diag or {}).get("drifts", {}).get(pair[0].token, pair[0].size_pct))
     actionable.sort(key=drift_key, reverse=True)
     top_k = actionable[:max_k]
@@ -324,26 +319,24 @@ def _generate_agentic(
         "source": "agentic",
         "tools_called": tools_called,
         "n_actions": len(top_k),
-        "actions": [
-            {"token": c.token, "direction": c.direction.value, "size_pct": c.size_pct,
-             "guard_reason": d.get("guard_reason")}
-            for c, d in top_k
-        ],
+        "actions": [{"token": c.token, "direction": c.direction.value, "size_pct": c.size_pct, "guard_reason": d.get("guard_reason")} for c, d in top_k],
         # Keep first-action fields for backward-compat dashboard reads
         "token": top_k[0][0].token,
         "direction": top_k[0][0].direction.value,
         "size_pct": top_k[0][0].size_pct,
     }
     if pre_diag:
-        batch_diag.update({
-            "tier": pre_diag.get("tier", 0),
-            "dd_ratio": pre_diag.get("dd_ratio", 0.0),
-            "best_token_drift": pre_diag.get("best_token_drift", ""),
-            "best_token_drift_pct": pre_diag.get("best_token_drift_pct", 0.0),
-            "best_token_target_weight_pct": pre_diag.get("best_token_target_weight_pct", 0.0),
-            "best_token_current_weight_pct": pre_diag.get("best_token_current_weight_pct", 0.0),
-            "tier_thresholds": pre_diag.get("tier_thresholds", {}),
-        })
+        batch_diag.update(
+            {
+                "tier": pre_diag.get("tier", 0),
+                "dd_ratio": pre_diag.get("dd_ratio", 0.0),
+                "best_token_drift": pre_diag.get("best_token_drift", ""),
+                "best_token_drift_pct": pre_diag.get("best_token_drift_pct", 0.0),
+                "best_token_target_weight_pct": pre_diag.get("best_token_target_weight_pct", 0.0),
+                "best_token_current_weight_pct": pre_diag.get("best_token_current_weight_pct", 0.0),
+                "tier_thresholds": pre_diag.get("tier_thresholds", {}),
+            }
+        )
     return final_candidates, batch_diag
 
 
@@ -407,6 +400,7 @@ def _generate_llm(
 ) -> tuple[list[CandidateAction], dict]:
     """Standard LLM signal path — one-shot prompt, no tool calls."""
     from .strategies.momentum_rebalance import compute_diagnostics
+
     pre_diag = compute_diagnostics(snapshot, portfolio, competition, cfg, score)
     return _generate_llm_with_system(_V1_SIGNAL_SYSTEM, snapshot, portfolio, cfg, pre_diag, llm)
 
@@ -454,6 +448,7 @@ def _generate_llm_with_system(
 
 # ── Shared candidate builder ─────────────────────────────────────────────────────────────
 
+
 def _build_candidate(
     token: str,
     direction: Direction,
@@ -496,7 +491,11 @@ def _build_candidate(
 
     logger.info(
         "Helm signal: %s %s size=%.1f%% exec=%s | %s",
-        token, direction.value, size_pct, exec_mode.value, rationale[:100],
+        token,
+        direction.value,
+        size_pct,
+        exec_mode.value,
+        rationale[:100],
     )
 
     candidate = CandidateAction(
@@ -518,18 +517,21 @@ def _build_candidate(
         "exec_mode": exec_mode.value,
     }
     if pre_diag:
-        result_diag.update({
-            "tier": pre_diag.get("tier", 0),
-            "dd_ratio": pre_diag.get("dd_ratio", 0.0),
-            "best_token": token,
-            "best_drift_pct": pre_diag.get("drifts", {}).get(token, 0.0),
-            "target_weight_pct": pre_diag.get("target_weights", {}).get(token, 0.0),
-            "current_weight_pct": pre_diag.get("current_weights", {}).get(token, 0.0),
-        })
+        result_diag.update(
+            {
+                "tier": pre_diag.get("tier", 0),
+                "dd_ratio": pre_diag.get("dd_ratio", 0.0),
+                "best_token": token,
+                "best_drift_pct": pre_diag.get("drifts", {}).get(token, 0.0),
+                "target_weight_pct": pre_diag.get("target_weights", {}).get(token, 0.0),
+                "current_weight_pct": pre_diag.get("current_weights", {}).get(token, 0.0),
+            }
+        )
     return candidate, result_diag
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _build_agentic_prompt(
     snapshot: MarketSnapshot,
@@ -548,7 +550,7 @@ def _build_agentic_prompt(
         lines.append(
             f"  {tok}: price=${feat.price_usd:.4f}  RSI={feat.rsi_14}  MACD={feat.macd}  EMA20={feat.ema_20}  F&G={feat.fear_greed}  funding={feat.funding_rate}  24h%={feat.price_change_24h_pct}"
         )
-    
+
     nav = float(portfolio.nav_usd or 1.0)
     holdings = portfolio.holdings or {}
 
@@ -582,6 +584,7 @@ def _build_agentic_prompt(
     lines.append("""Decide and response with the CSV OUTPUT FORMAT
                  Do NOT include any explanation outside the CSV. Do NOT wrap in code blocks.""")
     return "\n".join(lines)
+
 
 def _build_prompt(
     snapshot: MarketSnapshot,

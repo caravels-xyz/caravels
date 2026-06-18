@@ -9,9 +9,8 @@ from __future__ import annotations
 import json
 import logging
 
-from .models import MarketSnapshot
-
 from .db import CaravelDB
+from .models import MarketSnapshot
 from .twak import TWAKAdapter
 
 logger = logging.getLogger(__name__)

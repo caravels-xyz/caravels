@@ -15,8 +15,8 @@ from caravels.models import (
     MarketSnapshot,
     PortfolioState,
     RegistrationStatus,
-    TokenFeatures,
     Score,
+    TokenFeatures,
 )
 
 
@@ -110,6 +110,7 @@ def buy_candidate():
 @pytest.fixture()
 def hold_candidate():
     return CandidateAction(token="ETH", direction=Direction.HOLD, size_pct=0.0, rationale="test hold")
+
 
 @pytest.fixture()
 def healthy_score():

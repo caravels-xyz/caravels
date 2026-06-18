@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .db import CaravelDB
 
 
-def realized_vol_annual(db: "CaravelDB", symbol: str, n_bars: int = 20) -> float | None:
+def realized_vol_annual(db: CaravelDB, symbol: str, n_bars: int = 20) -> float | None:
     """Return annualised realized volatility for *symbol* from DB price history.
 
     Uses log-returns of the most recent *n_bars* closes.
