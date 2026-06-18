@@ -1,0 +1,42 @@
+[project]
+name = "caravels"
+version = "0.1.0"
+description = "Caravels — autonomous self-custodial trading vessel for BNB Chain. Helm steers, Keel keeps it upright."
+requires-python = ">=3.12"
+dependencies = [
+  "bnbagent>=0.3.5",
+  "flask",
+  "mcp>=1.27.2",
+  "mistralai",
+  "numpy",
+  "openai",
+  "pandas",
+  "python-dotenv",
+  "requests",
+  "ta-lib",
+  "waitress",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 200
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.4.0",
+]

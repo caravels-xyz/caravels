@@ -1,0 +1,77 @@
+/* Caravels — Operator Dashboard */
+
+body {
+  font-family: monospace;
+  background: #0a0e1a;
+  color: #c8d6e5;
+  padding: 2rem;
+  margin: 0;
+}
+
+h1 { color: #4fc3f7; }
+
+h2 {
+  color: #81d4fa;
+  border-bottom: 1px solid #1e3a5f;
+  padding-bottom: 0.3rem;
+}
+
+a { color: #81d4fa; }
+
+/* ── Status grid ───────────────────────────────────────────────────────────── */
+
+#status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: #0f1929;
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #4fc3f7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #c8d6e5;
+  word-break: break-all;
+}
+
+/* ── Receipts table ────────────────────────────────────────────────────────── */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.4rem 0.8rem;
+  border-bottom: 1px solid #1e3a5f;
+}
+
+th { color: #4fc3f7; }
+
+.ok   { color: #a5d6a7; }
+.warn { color: #fff176; }
+.err  { color: #ef9a9a; }
+
+.tag {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  background: #1e3a5f;
+}

@@ -1,0 +1,49 @@
+{
+  "_comment": "Caravels — competition profile (June 22–28, $100 USDC). Copy to settings.json before go-live.",
+  "_profile": "competition",
+
+  "strategy": "auto",
+  "strategy_version": "v2",
+  "base_token": "USDC",
+  "loop_interval_seconds": 900,
+  "ladder_volatility_threshold_pct": 3.0,
+
+  "momentum_rebalance_drift_pct": 5.0,
+  "momentum_min_usdc_reserve_pct": 40.0,
+  "momentum_max_target_weight_pct": 25.0,
+  "momentum_tier1_drawdown_ratio": 0.65,
+  "momentum_tier2_drawdown_ratio": 0.80,
+  "momentum_tier3_drawdown_ratio": 0.93,
+  "momentum_size_scale_tier1": 0.40,
+
+  "risk": {
+    "max_trade_size_pct": 20.0,
+    "max_risk_on_exposure_pct": 50.0,
+    "max_single_token_exposure_pct": 25.0,
+    "trade_cooldown_ticks": 3,
+    "max_slippage_pct": 1.0,
+    "max_open_bets": 2,
+
+    "daily_soft_drawdown_pct": 3.0,
+    "daily_hard_derisk_pct": 8.0,
+    "hard_derisk_drawdown_pct": 18.0,
+    "dq_drawdown_pct": 30.0,
+
+    "min_trade_notional_usd": 10.0,
+    "portfolio_floor_usd": 50.0,
+    "max_rungs": 10,
+    "min_rungs": 2,
+    "max_rung_spacing_pct": 5.0,
+
+    "fallback_trade_max_cost_usd": 5.0,
+    "daily_quota_cutoff_hour_utc": 20
+  },
+
+  "eligible_tokens": {
+    "USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+    "ETH":  "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
+    "LINK": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
+    "CAKE": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+    "AVAX": "0x1CE0c2827e2eF14D5C4f29a091d735A204794041"
+  }
+}

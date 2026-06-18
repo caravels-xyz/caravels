@@ -1,0 +1,75 @@
+{
+  "_comment": "Caravels strategy settings. Edit freely — no secrets here. Reload by restarting the agent.",
+  "_profile": "observation",
+
+  "strategy": "auto",
+  "strategy_version": "v2",
+  "base_token": "USDC",
+  "loop_interval_seconds": 900,
+  "ladder_volatility_threshold_pct": 3.0,
+
+  "momentum_rebalance_drift_pct": 6.0,
+  "v2_rebalance_drift_pct": 6.0,
+
+  "risk": {
+    "_comment_trade": "Per-trade caps",
+    "max_trade_size_pct": 20.0,
+    "max_risk_on_exposure_pct": 80.0,
+    "max_single_token_exposure_pct": 30.0,
+    "trade_cooldown_ticks": 2,
+    "max_slippage_pct": 1.0,
+    "max_open_bets": 2,
+
+    "_comment_drawdown": "Drawdown gates",
+    "daily_soft_drawdown_pct": 3.0,
+    "daily_hard_derisk_pct": 8.0,
+    "hard_derisk_drawdown_pct": 18.0,
+    "dq_drawdown_pct": 30.0,
+
+    "_comment_floor": "Floor / dust / ladder",
+    "min_trade_notional_usd": 1.0,
+    "portfolio_floor_usd": 2.0,
+    "max_rungs": 5,
+    "min_rungs": 2,
+    "max_rung_spacing_pct": 5.0,
+
+    "_comment_fallback": "Fallback / quota",
+    "fallback_trade_max_cost_usd": 1.0,
+    "daily_quota_cutoff_hour_utc": 20
+  },
+
+  "eligible_tokens": {
+    "USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+    "ETH":  "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
+    "LINK": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
+    "CAKE": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+    "AVAX": "0x1CE0c2827e2eF14D5C4f29a091d735A204794041",
+    "XRP": "0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe",
+    "TRX": "0xCE7de646e7208a4Ef112cb6ed5038FA6cC6b12e3",
+    "DOGE": "0xba2ae424d960c26247dd6c32edc70b295c744c43",
+    "ZEC": "0x1ba42e5193dfa8b03d15dd1b86a3113bbbef8eeb",
+    "ADA": "0x3ee2200efb3400fabb9aacf31297cbdd1d435d47",
+    "BCH": "0x8fF795a6F4D97E7887C79beA79aba5cc76444aDf",
+    "TON": "0x76a797a59ba2c17726896976b7b3747bfd1d220f",
+    "M": "0x22b1458e780f8fa71e2f84502cee8b5a3cc731fa",
+    "LTC": "0x4338665cbb7b2485a8855a139b75d5e34ab0db94",
+    "SHIB": "0x2859e4544c4bb03966803b044a93563bd2d0dd4d",
+    "WLFI": "0x47474747477b199288bF72a1D702f7Fe0Fb1DEeA",
+    "DOT": "0x7083609fce4d1d8dc0c979aab8c869ea2c873402",
+    "UNI": "0xbf5140a22578168fd562dccf235e5d43a02ce9b1",
+    "ASTER": "0x000Ae314E2A2172a039B26378814C252734f556A",
+    "DEXE": "0x6E88056E8376Ae7709496Ba64d37fa2f8015ce3e",
+    "ETC": "0x3d6545b08693dae087e957cb1180ee38b9e3c25e",
+    "AAVE": "0xfb6115445bff7b52feb98650c87f44907e58f802",
+    "ATOM": "0x0eb3a705fc54725037cc9e008bdede697f62f335",
+    "FIL": "0x0d8ce2a99bb6e3b7db580ed848240e4a0f9ae153",
+    "INJ": "0xa2b726b1145a4773f68593cf171187d8ebe4d495",
+    "币安人生": "0x924fa68a0FC644485b8df8AbfA0A41C2e7744444",
+    "NIGHT": "0xfe930c2d63aed9b82fc4dbc801920dd2c1a3224f",
+    "FET": "0x031b41e504677879370e9dbcf937283a8691fa7f",
+    "BONK": "0xA697e272a73744b343528C3Bc4702F2565b2F422",
+    "PENGU": "0x6418c0dd099a9fda397c766304cdd918233e8847",
+    "SIREN": "0x997a58129890bbda032231a52ed1ddc845fc18e1",
+    "BEAT": "0xcf3232B85b43BCa90E51D38cc06Cc8bB8C8A3E36"
+  }
+}

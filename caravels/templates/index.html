@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⛵ Caravels — Operator Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="initial-receipts-json" type="application/json">{{ receipts|tojson }}</script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hull: '#0b1b2b',
+            sail: '#f7f4ec',
+            sea: '#0f766e',
+            tide: '#1d4ed8',
+            warning: '#d97706',
+            danger: '#b91c1c'
+          },
+          boxShadow: {
+            panel: '0 10px 30px rgba(2, 6, 23, 0.25)'
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-hull via-slate-900 to-sea text-slate-100">
+  <div class="mx-auto mx-auto max-w-9/10 xl:max-w-[100rem] px-4 py-6 sm:px-6 lg:px-8">
+    <header class="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-5 shadow-panel backdrop-blur">
+      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight text-sail sm:text-3xl">⛵ Caravels Operator Console</h1>
+          <p class="mt-1 text-sm text-slate-300">Helm steers. Keel stabilizes. Execution visibility for every loop.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-sm">
+          <span id="live-transport" class="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-slate-300">transport: connecting</span>
+          <a class="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 hover:bg-slate-700" href="/api/status">Status API</a>
+          <a class="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 hover:bg-slate-700" href="/api/receipts">Receipts API</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6" id="status-grid">
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Tradeable NAV</p>
+        <p class="mt-2 text-2xl font-semibold" id="nav-value">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Gas Reserve</p>
+        <p class="mt-2 text-2xl font-semibold" id="gas-value">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Drawdown</p>
+        <p class="mt-2 text-2xl font-semibold" id="drawdown-value">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Trades Today</p>
+        <p class="mt-2 text-2xl font-semibold" id="trades-value">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Mode</p>
+        <p class="mt-2 text-2xl font-semibold" id="mode-value">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Last Tick</p>
+        <p class="mt-2 text-sm font-medium" id="updated-value">-</p>
+      </article>
+    </section>
+
+    <section class="mt-4 rounded-2xl border border-slate-700/70 bg-slate-900/70 p-4 shadow-panel">
+      <details class="mt-2 group">
+        <summary class="text-xs text-slate-400 cursor-pointer flex items-center gap-1">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">Holdings Snapshot</h2>
+          <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          <p id="holdings-value" class="mt-2 text-sm text-slate-200 group-open:hidden md:group-open:block">-</p>
+        </summary>
+        <div id="holdings-details" class="space-y-2 text-sm text-slate-300 grid grid-cols-3 md:grid-cols-4 max-h-64 overflow-y-auto"></div>
+      </details>
+
+    </section>
+
+    <section class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" id="score-grid">
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Net Return (Actual Tx Fees)</p>
+        <p class="mt-2 text-2xl font-semibold" id="score-net-return">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Max Drawdown</p>
+        <p class="mt-2 text-2xl font-semibold" id="score-max-dd">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">DQ Gate</p>
+        <p class="mt-2 text-sm font-semibold" id="score-dq-gate">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400">Min Trades Gate</p>
+        <p class="mt-2 text-sm font-semibold" id="score-trade-gate">-</p>
+      </article>
+    </section>
+    <section class="mt-3 rounded-xl border border-slate-700/80 bg-slate-900/70 p-3 shadow-panel">
+      <p class="text-xs uppercase tracking-wider text-slate-400">Scoring Window</p>
+      <p class="mt-1 text-sm text-slate-200" id="score-window">-</p>
+    </section>
+
+    <section class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" id="strategy-grid">
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400"> Active Tier<span id="strategy-tier-tooltip" class="tooltip float-right border border-slate-700/80 bg-emerald-900/30 min-w-4 text-center font-bold cursor-help" title="Determine risk tier based on drawdown ratio and configured thresholds. Tier 3 is the most severe, tier 0 means no issues.">?</span></p>
+        <p class="mt-2 text-2xl font-semibold" id="strategy-tier">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400"> Top Drift Token</p>
+        <p class="mt-2 text-2xl font-semibold" id="strategy-top-drift-token">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400"> Top Drift %<span id="strategy-top-drift-pct-tooltip" class="tooltip float-right border border-slate-700/80 bg-emerald-900/30 min-w-4 text-center font-bold cursor-help" title="Positive means we want more of the token, negative means we want less">?</span></p>
+        <p class="mt-2 text-2xl font-semibold" id="strategy-top-drift-pct">-</p>
+      </article>
+      <article class="rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 shadow-panel">
+        <p class="text-xs uppercase tracking-wider text-slate-400"> Target / Current<span id="strategy-target-current-tooltip" class="tooltip float-right border border-slate-700/80 bg-emerald-900/30 min-w-4 text-center font-bold cursor-help" title="Target weight is proportional to positive scores within the risk budget, capped at max_target_weight_pct.">?</span></p>
+        <p class="mt-2 text-sm font-mono" id="strategy-target-current">-</p>
+      </article>
+    </section>
+
+    <section class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12">
+      <div class="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-4 shadow-panel lg:col-span-7">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Decision Receipts</h2>
+          <p class="text-xs text-slate-400">Click any row to inspect loop state</p>
+        </div>
+        <div class="mb-3 rounded-xl border border-slate-700/70 bg-slate-950/60 p-3">
+          <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-slate-200">Run Timeline (Last 40 Loops)</h3>
+            <p class="text-xs text-slate-400" id="timeline-summary">No loop data yet</p>
+          </div>
+          <div id="loop-timeline" class="flex flex-wrap gap-1.5"></div>
+          <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+            <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>executed</span>
+            <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-red-400"></span>failed/rejected</span>
+            <span class="inline-flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-amber-400"></span>skipped/simulated</span>
+          </div>
+        </div>
+        <div class="max-h-screen overflow-auto rounded-xl border border-slate-700/70">
+          <table class="min-w-full text-left text-sm" id="receipts-table">
+            <thead class="sticky top-0 bg-slate-800/95 text-xs uppercase tracking-wide text-slate-300">
+              <tr>
+                <th class="px-3 py-2">Receipt</th>
+                <th class="px-3 py-2">Time</th>
+                <th class="px-3 py-2">Trade</th>
+                <th class="px-3 py-2">Size%</th>
+                <th class="px-3 py-2">TX Status</th>
+                <th class="px-3 py-2">Loop State</th>
+                <th class="px-3 py-2">TX</th>
+              </tr>
+            </thead>
+            <tbody id="receipts-body" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-4 shadow-panel lg:col-span-5">
+        <h2 class="text-lg font-semibold">Execution Pane</h2>
+        <p class="mt-1 text-xs text-slate-400" id="selected-run-meta">No run selected</p>
+
+        <div class="mt-4 space-y-4">
+          <section class="rounded-xl border border-slate-700/70 bg-slate-950/60 p-3">
+            <h3 class="mb-2 text-sm font-semibold text-slate-200">Live Event Feed</h3>
+            <ul id="live-event-feed" class="max-h-52 space-y-2 overflow-auto text-sm"></ul>
+          </section>
+
+          <section class="rounded-xl border border-slate-700/70 bg-slate-950/60 p-3">
+            <h3 class="mb-2 text-sm font-semibold text-slate-200">State Flow</h3>
+            <ol id="state-flow" class="space-y-2"></ol>
+          </section>
+
+          <section class="rounded-xl border border-slate-700/70 bg-slate-950/60 p-3">
+            <h3 class="mb-2 text-sm font-semibold text-slate-200">Last Run Events</h3>
+            <ul id="last-run-events" class="max-h-52 space-y-2 overflow-auto text-sm"></ul>
+          </section>
+
+          <section class="rounded-xl border border-slate-700/70 bg-slate-950/60 p-3">
+            <h3 class="mb-2 text-sm font-semibold text-slate-200">Ask Helm</h3>
+            <p class="mb-3 text-xs text-slate-400">Allowed topics: holdings, compliance, performance.</p>
+            <div id="inquiry-examples" class="mb-3 flex flex-wrap gap-2">
+              <button type="button" class="inquiry-example rounded-md border border-slate-600 bg-slate-800/80 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700" data-topic="holdings" data-question="Which holdings are currently largest and how concentrated is my portfolio?">Top holdings + concentration</button>
+              <button type="button" class="inquiry-example rounded-md border border-slate-600 bg-slate-800/80 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700" data-topic="holdings" data-question="Did holdings composition change materially in the last few loops?">Holdings change trend</button>
+              <button type="button" class="inquiry-example rounded-md border border-slate-600 bg-slate-800/80 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700" data-topic="compliance" data-question="Am I currently meeting hackathon competition constraints and what could disqualify me next?">Compliance risk check</button>
+              <button type="button" class="inquiry-example rounded-md border border-slate-600 bg-slate-800/80 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700" data-topic="performance" data-question="Evaluate recent Helm + Keel performance: execution quality, rejection rate, and failure hotspots.">Performance evaluation</button>
+            </div>
+            <div class="space-y-2">
+              <select id="inquiry-topic" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm text-slate-100">
+                <option value="holdings">Portfolio holdings</option>
+                <option value="compliance">Hackathon competition compliance</option>
+                <option value="performance">Self performance evaluation (Helm + Keel)</option>
+              </select>
+              <textarea id="inquiry-question" rows="3" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm text-slate-100" placeholder="Ask a focused question for the selected topic..."></textarea>
+              <button id="inquiry-send" class="rounded-lg border border-sea bg-sea/30 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-sea/45">Send inquiry</button>
+            </div>
+            <div id="inquiry-answer" class="mt-3 rounded-lg border border-slate-700/70 bg-slate-900/70 p-2 text-sm text-slate-200">No inquiry yet.</div>
+          </section>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      status: null,
+      receipts: [],
+      tokenPnls: [],
+      selectedReceiptId: null,
+      runtimeEvents: [],
+      inquiry: {
+        pending: false,
+        answer: 'No inquiry yet.'
+      }
+    };
+    let pollingTimer = null;
+    let sse = null;
+
+    function fmtUsd(v) {
+      const n = Number(v || 0);
+      return '$' + n.toFixed(2);
+    }
+
+    function fmtPct(v) {
+      const n = Number(v || 0);
+      return n.toFixed(2) + '%';
+    }
+
+    function safeSlice(text, n) {
+      if (!text) return '-';
+      return String(text).slice(0, n);
+    }
+
+    const localDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    function fmtLocalTs(value) {
+      if (!value) return '-';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) {
+        return safeSlice(value, 19);
+      }
+      return localDateTimeFormatter.format(d);
+    }
+
+    function loopState(receipt) {
+      const riskStatus = receipt?.risk_verdict?.status;
+      const compliancePassed = receipt?.compliance_result?.passed;
+      const exec = String(receipt?.execution_status || '').toLowerCase();
+
+      if (riskStatus === 'rejected') return 'risk_rejected';
+      if (compliancePassed === false) return 'compliance_rejected';
+      if (exec === 'failed') return 'execution_failed';
+      if (exec === 'executed') return 'executed';
+      if (exec === 'placed') return 'placed';
+      if (exec === 'skipped') return 'skipped';
+      if (exec === 'dry_run') return 'simulated';
+      return exec || 'unknown';
+    }
+
+    function tradeSummary(receipt) {
+      if (receipt?.trade_summary) {
+        return String(receipt.trade_summary);
+      }
+      const action = receipt?.candidate_action || {};
+      const token = action.token || '-';
+      const direction = String(action.direction || '-').toUpperCase();
+      const size = Number(action.size_pct || 0).toFixed(1) + '%';
+      return direction + ' ' + token + ' (' + size + ')';
+    }
+
+    function txConfirmationStatus(receipt) {
+      if (receipt?.tx_confirmation_status) {
+        return String(receipt.tx_confirmation_status);
+      }
+      const exec = String(receipt?.execution_status || '').toLowerCase();
+      const hasTx = Boolean(receipt?.tx_hash);
+      if (exec === 'executed' && hasTx) return 'confirmed';
+      if (exec === 'placed' && hasTx) return 'pending';
+      if (exec === 'dry_run') return 'simulated';
+      if (exec === 'failed') return 'failed';
+      if (exec === 'skipped') return 'not sent';
+      return hasTx ? 'submitted' : 'none';
+    }
+
+    function badgeClass(kind) {
+      if (kind === 'executed' || kind === 'done' || kind === 'ok') return 'bg-emerald-700/70 text-emerald-100 border-emerald-600/70';
+      if (kind === 'placed' || kind === 'pending_fill') return 'bg-blue-700/70 text-blue-100 border-blue-600/70';
+      if (kind === 'execution_failed' || kind === 'risk_rejected' || kind === 'compliance_rejected' || kind === 'failed' || kind === 'error') return 'bg-red-700/70 text-red-100 border-red-600/70';
+      if (kind === 'in_progress' || kind === 'active') return 'bg-blue-700/70 text-blue-100 border-blue-600/70';
+      return 'bg-amber-700/70 text-amber-100 border-amber-600/70';
+    }
+
+    function asBadge(text, kind) {
+      return '<span class="rounded-md border px-2 py-0.5 text-xs font-semibold ' + badgeClass(kind) + '">' + text + '</span>';
+    }
+
+    function setTransportBadge(label, variant) {
+      const el = document.getElementById('live-transport');
+      if (!el) return;
+      const base = 'rounded-lg border px-3 py-2';
+      if (variant === 'ok') {
+        el.className = base + ' border-emerald-600 bg-emerald-900/30 text-emerald-300';
+      } else if (variant === 'warn') {
+        el.className = base + ' border-amber-600 bg-amber-900/30 text-amber-300';
+      } else {
+        el.className = base + ' border-slate-600 bg-slate-800/80 text-slate-300';
+      }
+      el.textContent = label;
+    }
+
+    function getSelectedReceipt() {
+      return state.receipts.find(r => r.receipt_id === state.selectedReceiptId) || state.receipts[0] || null;
+    }
+
+    function buildFlow(receipt) {
+      const risk = receipt?.risk_verdict?.status || null;
+      const compliancePassed = receipt?.compliance_result?.passed || false;
+      const exec = receipt?.execution_status || null;
+      const direction = String(receipt?.candidate_action?.direction || '-').toUpperCase();
+      const token = receipt?.candidate_action?.token || '-';
+      const sizePct = Number(receipt?.candidate_action?.size_pct || 0).toFixed(2) + '%';
+      const strategyName = receipt?.candidate_action?.strategy_version;
+      const proseRationale = receipt?.candidate_action?.prose_rationale || '';
+
+      const steps = [
+        { name: 'Fetch market snapshot', status: 'done', detail: fmtLocalTs(receipt?.market_snapshot_ref) },
+        {
+          name: `Generate signal ${strategyName? 'with strategy' : ''} ${strategyName? strategyName : ''}`,
+          status: 'done',
+          detail: `${direction} ${token} (${sizePct}) · ${proseRationale}`
+        },
+        {
+          name: 'Risk checks',
+          status: risk === 'rejected' ? 'failed' : 'done',
+          detail: risk ? risk.toUpperCase() : ''
+        },
+        {
+          name: 'Compliance checks',
+          status: compliancePassed === false ? 'failed' : 'done',
+          detail: compliancePassed === false ? 'FAILED' : 'PASSED'
+        },
+        {
+          name: 'Execution',
+          status: exec === 'failed' ? 'failed' : (exec === 'executed' ? 'done' : (exec === 'placed' ? 'active' : 'skipped')),
+          detail: exec? exec.toUpperCase() : ''
+        },
+        {
+          name: 'Persist receipt',
+          status: 'done',
+          detail: safeSlice(receipt?.receipt_id, 8)
+        }
+      ];
+
+      if (!receipt) {
+        return [
+          { name: 'Awaiting first run', status: 'active', detail: 'No receipt yet' }
+        ];
+      }
+
+      return steps;
+    }
+
+    function flowRow(step) {
+      const dotClass = step.status === 'done'
+        ? 'bg-emerald-400'
+        : step.status === 'failed'
+          ? 'bg-red-400'
+          : step.status === 'active'
+            ? 'bg-blue-400'
+            : 'bg-amber-400';
+      return '<li class="flex items-start gap-3 rounded-lg border border-slate-700/70 bg-slate-900/60 p-2">'
+        + '<span class="mt-1 h-2.5 w-2.5 rounded-full ' + dotClass + '"></span>'
+        + '<div class="min-w-0">'
+        + '<p class="text-sm font-medium text-slate-100">' + step.name + '</p>'
+        + '<p class="text-xs text-slate-400 py-1">' + (step.detail || '-') + '</p>'
+        + '</div>'
+        + '</li>';
+    }
+
+    function buildLastRunEvents(receipt) {
+      if (!receipt) {
+        return [{ ts: '-', text: 'No run events yet', kind: 'warn' }];
+      }
+
+      const riskReasons = receipt?.risk_verdict?.reasons || [];
+      const complianceReasons = receipt?.compliance_result?.rejection_reasons || [];
+      const events = [];
+
+      events.push({ ts: fmtLocalTs(receipt.market_snapshot_ref), text: 'Tick started and snapshot captured', kind: 'ok' });
+      events.push({
+        ts: fmtLocalTs(receipt.timestamp),
+        text: 'Signal: ' + (receipt?.candidate_action?.direction || '-') + ' ' + (receipt?.candidate_action?.token || '-')
+          + ' @ ' + (Number(receipt?.candidate_action?.size_pct || 0)).toFixed(2) + '%',
+        kind: 'ok'
+      });
+      events.push({
+        ts: fmtLocalTs(receipt.timestamp),
+        text: 'Risk verdict: ' + (receipt?.risk_verdict?.status || '-')
+          + (riskReasons.length ? ' (' + riskReasons.join('; ') + ')' : ''),
+        kind: receipt?.risk_verdict?.status === 'rejected' ? 'error' : 'ok'
+      });
+      events.push({
+        ts: fmtLocalTs(receipt.timestamp),
+        text: 'Compliance: ' + (receipt?.compliance_result?.passed === false ? 'failed' : 'passed')
+          + (complianceReasons.length ? ' (' + complianceReasons.join('; ') + ')' : ''),
+        kind: receipt?.compliance_result?.passed === false ? 'error' : 'ok'
+      });
+      events.push({
+        ts: fmtLocalTs(receipt.timestamp),
+        text: 'Execution: ' + (receipt?.execution_status || '-')
+          + (receipt?.tx_hash ? ' tx=' + safeSlice(receipt.tx_hash, 12) : ''),
+        kind: receipt?.execution_status === 'failed'
+          ? 'error'
+          : (receipt?.execution_status === 'executed' ? 'ok' : (receipt?.execution_status === 'placed' ? 'ok' : 'warn'))
+      });
+      events.push({
+        ts: fmtLocalTs(receipt.timestamp),
+        text: 'Receipt persisted: ' + safeSlice(receipt?.receipt_id, 8),
+        kind: 'ok'
+      });
+
+      return events;
+    }
+
+    function buildLiveFeed(receipts) {
+      if (state.runtimeEvents.length) {
+        return state.runtimeEvents.slice(0, 25);
+      }
+      return receipts.slice(0, 20).map((r) => ({
+        ts: fmtLocalTs(r.timestamp),
+        text: (r?.candidate_action?.direction || '-') + ' ' + (r?.candidate_action?.token || '-')
+          + ' · state=' + loopState(r)
+          + (r?.tx_hash ? ' · tx=' + safeSlice(r.tx_hash, 12) : ''),
+        kind: loopState(r) === 'executed'
+          ? 'ok'
+          : (loopState(r).includes('failed') || loopState(r).includes('rejected') ? 'error' : 'warn')
+      }));
+    }
+
+    function runtimeEventKind(eventType, level) {
+      if (level === 'error') return 'error';
+      if (eventType === 'execution_failed' || eventType === 'risk_rejected' || eventType === 'compliance_rejected') return 'error';
+      if (eventType === 'helm_feedback') return level === 'warning' ? 'warn' : 'ok';
+      if (eventType === 'placed') return 'ok';
+      if (eventType === 'skipped' || eventType === 'fallback_triggered') return 'warn';
+      return 'ok';
+    }
+
+    function ingestRuntimeEvent(evtType, data) {
+      const payload = data && typeof data === 'object' ? data : {};
+      const inner = payload.payload && typeof payload.payload === 'object' ? payload.payload : {};
+      const ts = fmtLocalTs(payload.timestamp);
+      const txt = (evtType === 'helm_feedback' ? ('Helm: ' + (payload.message || '')) : payload.message)
+        || (evtType + (inner.status ? ' · status=' + inner.status : ''));
+      const kind = runtimeEventKind(evtType, payload.level);
+
+      state.runtimeEvents.unshift({
+        ts,
+        text: txt,
+        kind,
+      });
+      state.runtimeEvents = state.runtimeEvents.slice(0, 60);
+
+      if (payload.receipt_id && !state.selectedReceiptId) {
+        state.selectedReceiptId = payload.receipt_id;
+      }
+      renderExecutionPane();
+    }
+
+    function eventRow(e) {
+      const kind = e.kind === 'error' ? 'error' : e.kind === 'ok' ? 'ok' : 'warn';
+      return '<li class="rounded-lg border border-slate-700/70 bg-slate-900/70 p-2">'
+        + '<div class="mb-1 flex items-center justify-between text-xs text-slate-400">'
+        + '<span>' + (e.ts || '-') + '</span>' + asBadge(kind, kind)
+        + '</div>'
+        + '<p class="text-sm text-slate-200">' + e.text + '</p>'
+        + '</li>';
+    }
+
+    function timelineBarClass(loopStateValue) {
+      if (loopStateValue === 'executed') return 'bg-emerald-400';
+      if (loopStateValue === 'execution_failed' || loopStateValue === 'risk_rejected' || loopStateValue === 'compliance_rejected') return 'bg-red-400';
+      return 'bg-amber-400';
+    }
+
+    function tokenPnLRow(tokenPnl) {
+      const driftClass = tokenPnl.token_pnl_pct > 0 ? 'text-emerald-400' : (tokenPnl.token_pnl_pct < 0 ? 'text-red-400' : 'text-slate-400');
+      return '<div class="px-3 py-2">' + tokenPnl.token + '</div>'
+        + '<div class="px-3 py-2 hidden md:block">' + tokenPnl.balance + '</div>'
+        + '<div class="px-3 py-2 text-right ' + driftClass + '">' + fmtUsd(tokenPnl.pnl_usd) + '</div>'
+        + '<div class="px-3 py-2 text-right ' + driftClass + '">' + fmtPct(tokenPnl.token_pnl_pct) + '</div>';
+    }
+
+    function renderLoopTimeline() {
+      const container = document.getElementById('loop-timeline');
+      const summary = document.getElementById('timeline-summary');
+      const recent = state.receipts.slice(0, 40);
+
+      if (!recent.length) {
+        container.innerHTML = '<span class="text-xs text-slate-400">No loop receipts yet</span>';
+        summary.textContent = 'No loop data yet';
+        return;
+      }
+
+      let ok = 0;
+      let fail = 0;
+      let skip = 0;
+
+      container.innerHTML = recent
+        .map((r, idx) => {
+          const ls = loopState(r);
+          if (ls === 'executed') {
+            ok += 1;
+          } else if (ls === 'execution_failed' || ls === 'risk_rejected' || ls === 'compliance_rejected') {
+            fail += 1;
+          } else {
+            skip += 1;
+          }
+          const ts = fmtLocalTs(r.timestamp);
+          const token = r?.candidate_action?.token || '-';
+          const dir = r?.candidate_action?.direction || '-';
+          return '<button class="h-4 w-2 rounded-sm ' + timelineBarClass(ls) + ' opacity-90 hover:opacity-100"'
+            + ' title="Loop #' + (recent.length - idx) + ' | ' + ts + ' | ' + dir + ' ' + token + ' | ' + ls + '"'
+            + ' data-receipt-id="' + r.receipt_id + '"></button>';
+        })
+        .join('');
+
+      summary.textContent = 'ok ' + ok + ' · fail ' + fail + ' · skipped ' + skip;
+
+      container.querySelectorAll('button[data-receipt-id]').forEach((el) => {
+        el.addEventListener('click', () => {
+          state.selectedReceiptId = el.getAttribute('data-receipt-id');
+          renderAll();
+        });
+      });
+    }
+
+    function renderReceipts() {
+      const tbody = document.getElementById('receipts-body');
+      const selected = getSelectedReceipt();
+      const selectedId = selected?.receipt_id;
+
+      tbody.innerHTML = state.receipts.map((r) => {
+        const active = r.receipt_id === selectedId;
+        const ls = loopState(r);
+        const txStatus = txConfirmationStatus(r);
+        const sizePct = Number(r?.candidate_action?.size_pct || 0).toFixed(1) + '%';
+        return '<tr class="cursor-pointer ' + (active ? 'bg-slate-700/50' : 'bg-transparent hover:bg-slate-800/70') + '" data-receipt-id="' + r.receipt_id + '">'
+          + '<td class="px-3 py-2 font-mono text-xs text-cyan-300">' + safeSlice(r.receipt_id, 8) + '</td>'
+          + '<td class="px-3 py-2">' + fmtLocalTs(r.timestamp) + '</td>'
+          + '<td class="px-3 py-2">' + tradeSummary(r) + '</td>'
+          + '<td class="px-3 py-2">' + sizePct + '</td>'
+          + '<td class="px-3 py-2">' + asBadge(txStatus, txStatus === 'confirmed' ? 'ok' : (txStatus === 'pending' || txStatus === 'submitted' ? 'active' : (txStatus === 'failed' ? 'error' : 'warn'))) + '</td>'
+          + '<td class="px-3 py-2">' + asBadge(ls, ls) + '</td>'
+          + '<td class="px-3 py-2 font-mono text-xs">' + (r.tx_hash ? safeSlice(r.tx_hash, 12) : '-') + '</td>'
+          + '</tr>';
+      }).join('');
+
+      tbody.querySelectorAll('tr[data-receipt-id]').forEach((row) => {
+        row.addEventListener('click', () => {
+          state.selectedReceiptId = row.getAttribute('data-receipt-id');
+          renderAll();
+        });
+      });
+    }
+
+    function renderExecutionPane() {
+      const receipt = getSelectedReceipt();
+      document.getElementById('selected-run-meta').textContent = receipt
+        ? 'Run ' + safeSlice(receipt.receipt_id, 8) + ' · ' + fmtLocalTs(receipt.timestamp)
+        : 'No run selected';
+
+      document.getElementById('state-flow').innerHTML = buildFlow(receipt).map(flowRow).join('');
+      document.getElementById('last-run-events').innerHTML = buildLastRunEvents(receipt).map(eventRow).join('');
+      document.getElementById('live-event-feed').innerHTML = buildLiveFeed(state.receipts).map(eventRow).join('');
+      document.getElementById('inquiry-answer').textContent = state.inquiry.answer;
+    }
+
+    async function sendInquiry() {
+      if (state.inquiry.pending) return;
+      const topicEl = document.getElementById('inquiry-topic');
+      const questionEl = document.getElementById('inquiry-question');
+      const question = (questionEl.value || '').trim();
+      const topic = (topicEl.value || '').trim();
+      if (!question) {
+        state.inquiry.answer = 'Please type a question first.';
+        renderExecutionPane();
+        return;
+      }
+
+      state.inquiry.pending = true;
+      state.inquiry.answer = 'Helm is thinking...';
+      renderExecutionPane();
+
+      try {
+        const resp = await fetch('/api/inquiry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, question }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          state.inquiry.answer = data.error || 'Inquiry failed.';
+        } else {
+          state.inquiry.answer = data.answer || 'No answer returned.';
+        }
+      } catch (_err) {
+        state.inquiry.answer = 'Inquiry failed due to network/server error.';
+      } finally {
+        state.inquiry.pending = false;
+        renderExecutionPane();
+      }
+    }
+
+    function applyInquiryExample(topic, question) {
+      const topicEl = document.getElementById('inquiry-topic');
+      const questionEl = document.getElementById('inquiry-question');
+      if (topicEl && topic) {
+        topicEl.value = topic;
+      }
+      if (questionEl && question) {
+        questionEl.value = question;
+        questionEl.focus();
+      }
+    }
+
+    function renderStatus() {
+      const s = state.status;
+      if (!s) return;
+
+      document.getElementById('nav-value').textContent = fmtUsd(s.nav_usd);
+      document.getElementById('gas-value').textContent = fmtUsd(s.gas_reserve_usd);
+
+      const drawdownEl = document.getElementById('drawdown-value');
+      drawdownEl.textContent = fmtPct(s.drawdown_pct);
+      drawdownEl.className = 'mt-2 text-2xl font-semibold ' + (s.drawdown_pct > 10 ? 'text-red-400' : s.drawdown_pct > 3 ? 'text-amber-400' : 'text-emerald-400');
+
+      document.getElementById('trades-value').textContent = String(s.daily_trade_count || 0);
+
+      const modeEl = document.getElementById('mode-value');
+      const mode = s.emergency_pause ? 'paused' : (s.dry_run ? 'dry-run' : 'live');
+      modeEl.textContent = mode;
+      modeEl.className = 'mt-2 text-2xl font-semibold ' + (s.emergency_pause ? 'text-red-400' : s.dry_run ? 'text-amber-400' : 'text-emerald-400');
+
+      document.getElementById('updated-value').textContent = fmtLocalTs(s.portfolio_updated_at);
+
+      const holdings = Object.entries(s.holdings || {})
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
+        .map(([k, v]) => k + ' ' + fmtUsd(v))
+        .join('  |  ');
+      document.getElementById('holdings-value').textContent = holdings || '-';
+
+      const score = s.score || {};
+
+      const netReturnEl = document.getElementById('score-net-return');
+      const netReturn = Number(score.net_return_pct || 0);
+      const netPnl = Number(s.net_pnl_usd || 0);
+      netReturnEl.textContent = fmtPct(netReturn) + ' · ' + fmtUsd(netPnl);
+      netReturnEl.className = 'mt-2 text-2xl font-semibold ' + (netReturn < 0 ? 'text-red-400' : 'text-emerald-400');
+
+      const maxDdEl = document.getElementById('score-max-dd');
+      const maxDd = Number(score.max_drawdown_pct || 0);
+      maxDdEl.textContent = fmtPct(maxDd);
+      maxDdEl.className = 'mt-2 text-2xl font-semibold ' + (maxDd >= Number(score.dq_drawdown_threshold_pct || 30) ? 'text-red-400' : 'text-emerald-400');
+
+      const dqEl = document.getElementById('score-dq-gate');
+      const dqFlag = Boolean(score.dq_flag);
+      dqEl.textContent = dqFlag
+        ? 'FAILED · ' + fmtPct(score.max_drawdown_pct) + ' >= ' + fmtPct(score.dq_drawdown_threshold_pct)
+        : 'PASS · below ' + fmtPct(score.dq_drawdown_threshold_pct || 30);
+      dqEl.className = 'mt-2 text-sm font-semibold ' + (dqFlag ? 'text-red-400' : 'text-emerald-400');
+
+      const tradeEl = document.getElementById('score-trade-gate');
+      const q = Number(score.qualifying_trade_count || 0);
+      const minReq = Number(score.min_trades_required || 1);
+      const gatePass = Boolean(score.min_trade_gate_passed);
+      tradeEl.textContent = (gatePass ? 'PASS' : 'PENDING') + ' · ' + q + ' / ' + minReq;
+      tradeEl.className = 'mt-2 text-sm font-semibold ' + (gatePass ? 'text-emerald-400' : 'text-amber-400');
+
+      const scoreWindowEl = document.getElementById('score-window');
+      const scoringStart = String(score.scoring_start_at || '').trim();
+      scoreWindowEl.textContent = scoringStart
+        ? 'from ' + fmtLocalTs(scoringStart) + ' to now'
+        : 'full history (no explicit scoring start)';
+
+      //  strategy diagnostics
+      const Diag = s.diagnostics || {};
+      const TierEl = document.getElementById('strategy-tier');
+      if (TierEl) {
+        const tierNum = Number(Diag.tier || 0);
+        const tierNames = ['Normal', 'Caution', 'Warning', 'Critical'];
+        TierEl.textContent = 'Tier ' + tierNum + ' (' + tierNames[tierNum] + ')';
+        TierEl.className = 'mt-2 text-2xl font-semibold ' + (tierNum >= 3 ? 'text-red-400' : tierNum >= 2 ? 'text-amber-400' : 'text-emerald-400');
+      }
+
+      const TokenEl = document.getElementById('strategy-top-drift-token');
+      if (TokenEl) {
+        TokenEl.textContent = String(Diag.best_token_drift || '-');
+      }
+
+      const DriftEl = document.getElementById('strategy-top-drift-pct');
+      if (DriftEl) {
+        const drift = Number(Diag.best_token_drift_pct || 0);
+        DriftEl.textContent = fmtPct(drift);
+        DriftEl.className = 'mt-2 text-2xl font-semibold ' + (drift > 0 ? 'text-blue-400' : drift < 0 ? 'text-orange-400' : 'text-slate-400');
+      }
+
+      const WeightsEl = document.getElementById('strategy-target-current');
+      if (WeightsEl) {
+        const target = Number(Diag.best_token_target_weight_pct || 0).toFixed(2);
+        const current = Number(Diag.best_token_current_weight_pct || 0).toFixed(2);
+        WeightsEl.textContent = target + '% / ' + current + '%';
+      }
+    }
+
+    function renderTokenPnL(){
+      const container = document.getElementById('holdings-details');
+      const tokenPnls = state.tokenPnls || [];
+      if (!tokenPnls.length) {
+        container.innerHTML = '<div class="px-3 py-2 text-sm text-slate-400">No token PnL data</div>';
+        return;
+      }
+      const header = '<div class="px-3 py-2 font-semibold">Token</div>'
+        + '<div class="px-3 py-2 font-semibold hidden md:block">Balance</div>'
+        + '<div class="px-3 py-2 font-semibold text-right">PnL (USD)</div>'
+        + '<div class="px-3 py-2 font-semibold text-right">PnL (%)</div>';
+      container.innerHTML = header + tokenPnls.map(tokenPnLRow).join('');
+    }
+
+    function renderAll() {
+      renderStatus();
+      renderLoopTimeline();
+      renderReceipts();
+      renderExecutionPane();
+      renderTokenPnL();
+    }
+
+    function applySnapshot(payload) {
+      if (!payload || typeof payload !== 'object') return;
+      if (payload.status) state.status = payload.status;
+      if (Array.isArray(payload.receipts)) state.receipts = payload.receipts;
+      if (Array.isArray(payload.tokenPnls)) state.tokenPnls = payload.tokenPnls;
+      if (!state.selectedReceiptId && state.receipts.length) {
+        state.selectedReceiptId = state.receipts[0].receipt_id;
+      }
+      renderAll();
+    }
+
+    async function refreshData() {
+      try {
+        const [statusResp, receiptsResp, tokenPnlResp] = await Promise.all([
+          fetch('/api/status'),
+          fetch('/api/receipts'),
+          fetch('/api/token_pnl')
+        ]);
+        applySnapshot({
+          status: await statusResp.json(),
+          receipts: await receiptsResp.json(),
+          tokenPnls: await tokenPnlResp.json()
+        });
+      } catch (e) {
+        console.warn('dashboard refresh failed', e);
+      }
+    }
+
+    function startPollingFallback() {
+      if (pollingTimer) return;
+      setTransportBadge('transport: polling fallback', 'warn');
+      refreshData();
+      pollingTimer = setInterval(refreshData, 12000);
+    }
+
+    function stopPollingFallback() {
+      if (!pollingTimer) return;
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
+
+    function startLiveStream() {
+      if (!window.EventSource) {
+        startPollingFallback();
+        return;
+      }
+
+      setTransportBadge('transport: sse connecting', 'warn');
+      sse = new EventSource('/api/stream');
+
+      sse.addEventListener('snapshot', (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          applySnapshot(payload);
+          stopPollingFallback();
+          setTransportBadge('transport: sse live', 'ok');
+        } catch (e) {
+          console.warn('bad sse payload', e);
+        }
+      });
+
+      const lifecycleEvents = [
+        'loop_started',
+        'helm_feedback',
+        'snapshot_fetched',
+        'signal_generated',
+        'risk_checked',
+        'compliance_checked',
+        'execution_started',
+        'placed',
+        'executed',
+        'execution_failed',
+        'execution_finished',
+        'skipped',
+        'fallback_triggered',
+        'persisted',
+        'loop_completed',
+      ];
+      lifecycleEvents.forEach((eventName) => {
+        sse.addEventListener(eventName, (event) => {
+          try {
+            ingestRuntimeEvent(eventName, JSON.parse(event.data));
+          } catch (e) {
+            console.warn('bad sse lifecycle payload', eventName, e);
+          }
+        });
+      });
+
+      sse.addEventListener('error', () => {
+        // Keep the UI live via polling while EventSource reconnects.
+        setTransportBadge('transport: reconnecting (polling)', 'warn');
+        startPollingFallback();
+      });
+    }
+
+    // Initial SSR fallback from flask for first paint
+    const initialReceiptsNode = document.getElementById('initial-receipts-json');
+    try {
+      state.receipts = JSON.parse(initialReceiptsNode?.textContent || '[]');
+    } catch (_err) {
+      state.receipts = [];
+    }
+    if (state.receipts.length) {
+      state.selectedReceiptId = state.receipts[0].receipt_id;
+    }
+    const inquiryBtn = document.getElementById('inquiry-send');
+    const inquiryInput = document.getElementById('inquiry-question');
+    const inquiryExamples = document.querySelectorAll('.inquiry-example');
+    inquiryBtn?.addEventListener('click', sendInquiry);
+    inquiryInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        sendInquiry();
+      }
+    });
+    inquiryExamples.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyInquiryExample(btn.getAttribute('data-topic'), btn.getAttribute('data-question'));
+      });
+    });
+    renderAll();
+
+    startLiveStream();
+  </script>
+</body>
+</html>
