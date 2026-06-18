@@ -386,6 +386,15 @@ The strongest demo shows both autonomy **and** restraint:
 
 ---
 
+## Diagrams
+
+There are three views of the main loop that could simplify the understanding of the Caravels process: 
+[loop-state.svg](loop-state.svg) state machine diagram, [loop-flow.svg](loop-flow.svg) flow diagram and [loop-sequence.svg](loop-sequence.svg) sequence diagram. 
+
+### State Diagram
+![loop-state.svg](loop-state.svg)
+
+
 ## License
 
 Released under the [MIT License](LICENSE).
