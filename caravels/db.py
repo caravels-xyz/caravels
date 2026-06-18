@@ -158,17 +158,17 @@ class CaravelDB:
                     datetime(es.timestamp) AS end_timestamp,
                     coalesce(ss.nav_usd,0) AS start_nav_usd,
                     coalesce(es.nav_usd,0) AS end_nav_usd,
-                    coalesce(es.nav_usd,0) - coalesce(ss.nav_usd,0) - actual_tx_fee_usd AS live_pnl,
+                    coalesce(es.nav_usd,0) - coalesce(ss.nav_usd,0) - coalesce(actual_tx_fee_usd,0) AS live_pnl,
                     max(coalesce(ps.nav_usd,0)) AS peak_nav_usd,
                     min(coalesce(ps.nav_usd,0)) AS low_nav_usd,
-                    coalesce(es.nav_usd,0) - actual_tx_fee_usd AS net_nav,
+                    coalesce(es.nav_usd,0) - coalesce(actual_tx_fee_usd,0) AS net_nav,
                     abs((coalesce(ss.nav_usd,0)-coalesce(es.nav_usd,0))/coalesce(es.nav_usd,0)) * 100 AS drawdown_pct,
                     abs((max(coalesce(ps.nav_usd,0))-coalesce(es.nav_usd,0))/max(coalesce(ps.nav_usd,0))) * 100 AS max_drawdown_pct,
                     coalesce(es.gas_reserve_usd,0) AS gas_reserve_usd,
                     (coalesce(es.nav_usd,0) - coalesce(ss.nav_usd,0))/coalesce(ss.nav_usd,0) * 100 AS gross_return_pct,
-                    (coalesce(es.nav_usd,0) - coalesce(ss.nav_usd,0) - actual_tx_fee_usd )/coalesce(ss.nav_usd,0) * 100 AS net_return_pct,
-                    actual_tx_fee_usd,
-                    qualifying_trades,
+                    (coalesce(es.nav_usd,0) - coalesce(ss.nav_usd,0) - coalesce(actual_tx_fee_usd,0) )/coalesce(ss.nav_usd,0) * 100 AS net_return_pct,
+                    coalesce(actual_tx_fee_usd,0) AS actual_tx_fee_usd,
+                    coalesce(qualifying_trades,0) AS qualifying_trades,
                     ifnull(es.holdings, '{}') AS holdings
                 FROM start_snapshot AS ss
                 LEFT OUTER JOIN end_snapshot AS es ON datetime(es.timestamp) >= datetime(ss.timestamp)

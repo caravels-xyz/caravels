@@ -14,6 +14,7 @@ Env vars never override settings.json values (two separate concerns).
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, datetime
 import json
 import os
 from dataclasses import dataclass, field, replace
@@ -249,7 +250,7 @@ class AppConfig:
             min_trades_required=int(os.getenv("CARAVELS_MIN_TRADES_REQUIRED", "1")),
             simulated_cost_bps=float(os.getenv("CARAVELS_SIMULATED_COST_BPS", "10")),
             simulated_fixed_cost_usd=float(os.getenv("CARAVELS_SIMULATED_FIXED_COST_USD", "0.02")),
-            scoring_start_at=os.getenv("CARAVELS_SCORING_START_AT", "").strip(),
+            scoring_start_at=os.getenv("CARAVELS_SCORING_START_AT", datetime.now(UTC).isoformat()),
             helm_agentic=os.getenv("CARAVELS_HELM_AGENTIC", "false").lower() == "true",
             helm_max_tool_rounds=int(os.getenv("CARAVELS_HELM_MAX_TOOL_ROUNDS", "4")),
             helm_max_actions_per_tick=max(1, int(os.getenv("CARAVELS_HELM_MAX_ACTIONS_PER_TICK", "2"))),
