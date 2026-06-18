@@ -7,6 +7,7 @@
   "base_token": "USDC",
   "loop_interval_seconds": 900,
   "ladder_volatility_threshold_pct": 3.0,
+  "default_tx_fee_usd": 0.012,
 
   "momentum_rebalance_drift_pct": 6.0,
   "v2_rebalance_drift_pct": 6.0,

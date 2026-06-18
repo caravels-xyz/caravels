@@ -40,6 +40,8 @@ import logging
 import re
 from datetime import UTC, datetime
 
+from caravels.config import AppConfig
+
 from .models import MarketSnapshot, TokenFeatures
 
 logger = logging.getLogger(__name__)
@@ -198,9 +200,11 @@ class CMCAdapter:
         agentdata_sentiment_path: str = "/api/sentiment",
         seeded_cmc_ids: dict[str, str] | None = None,
         tracked_symbols: list[str] | None = None,
+        config: AppConfig,
     ):
         self._api_key = api_key
         self._stub = stub or not api_key
+        self._config = config
         self._twak_bin = twak_bin
         self._x402_provider = (x402_provider or "agentdata").strip().lower()
         self._agentdata_base_url = agentdata_base_url.rstrip("/")
@@ -541,7 +545,7 @@ class CMCAdapter:
         try:
             from .twak import TWAKAdapter
 
-            twak = TWAKAdapter(bin_path=self._twak_bin, stub=False)
+            twak = TWAKAdapter(bin_path=self._twak_bin, stub=False, config=self._config)
 
             if provider == "cmc":
                 target_url = _MCP_X402_URL

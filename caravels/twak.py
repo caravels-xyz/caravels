@@ -27,6 +27,8 @@ import subprocess
 import time
 from datetime import UTC, datetime
 
+from caravels.config import AppConfig
+
 from .models import ExecutionResult, ExecutionStatus, MarketSnapshot, PortfolioState, RegistrationStatus
 
 try:
@@ -57,9 +59,11 @@ class TWAKAdapter:
         eligible_tokens: dict[str, str] | None = None,
         network: str = "bsc-mainnet",
         alchemy_api_key: str = "",
+        config: AppConfig,
     ):
         self._bin = bin_path
         self._stub = stub
+        self._config = config
         # eligible_tokens: {symbol -> BEP-20 contract address}
         # used to supplement TWAK's balance with on-chain token balance queries
         self._eligible_tokens: dict[str, str] = eligible_tokens or {}
@@ -235,7 +239,7 @@ class TWAKAdapter:
                     logger.warning("TWAK: failed to price BNB for tx confirmation %s: %s", tx_hash, exc)
             else:
                 logger.warning("TWAK: invalid gas data for tx confirmation %s: gasUsed=%s gasPrice=%s", tx_hash, gas_used, gas_price_wei)
-                fee_usd = 0.012  # fallback to a default fee for better UX in case of RPC issues, to avoid showing "pending" indefinitely
+                fee_usd = self._config.default_tx_fee_usd  # fallback to a default fee for better UX in case of RPC issues, to avoid showing "pending" indefinitely
 
             if is_confirmed:
                 return {

@@ -19,7 +19,7 @@ from caravels.twak import TWAKAdapter
 
 def main():
     cfg = AppConfig.from_env()
-    twak = TWAKAdapter(stub=not cfg.twak_access_id)
+    twak = TWAKAdapter(stub=not cfg.twak_access_id, config=cfg)
 
     print("Caravels — Competition Registration")
     print(f"  network:  {cfg.network}")

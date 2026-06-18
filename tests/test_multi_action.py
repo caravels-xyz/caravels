@@ -138,9 +138,9 @@ class TestMultiActionAgentic:
     def _run(self, rows: list[str], k: int, score) -> tuple[list[CandidateAction], dict]:
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="key", stub=True)
-        llm = FakeMultiRowLLM(rows)
         cfg = _cfg(helm_agentic=True, helm_max_actions_per_tick=k)
+        cmc = CMCAdapter(api_key="key", stub=True, config=cfg)
+        llm = FakeMultiRowLLM(rows)
         with patch.object(helm_signal, "_stub_type", return_value=type(None)), patch.object(cmc, "_stub", False):
             return helm_signal.generate(
                 _snapshot(),
@@ -222,8 +222,8 @@ class TestExecuteBatch:
         from caravels.twak import TWAKAdapter
 
         db = CaravelDB(":memory:")
-        twak = TWAKAdapter(stub=True)
         cfg = _cfg()
+        twak = TWAKAdapter(stub=True, config=cfg)
         receipts = execute_batch(
             [],
             _portfolio(),
@@ -241,8 +241,8 @@ class TestExecuteBatch:
         from caravels.twak import TWAKAdapter
 
         db = CaravelDB(":memory:")
-        twak = TWAKAdapter(stub=True)
         cfg = _cfg()
+        twak = TWAKAdapter(stub=True, config=cfg)
         candidates = [self._make_candidate("ETH", Direction.HOLD, 0.0)]
         receipts = execute_batch(
             candidates,
@@ -261,8 +261,8 @@ class TestExecuteBatch:
         from caravels.twak import TWAKAdapter
 
         db = CaravelDB(":memory:")
-        twak = TWAKAdapter(stub=True)
         cfg = _cfg(dry_run=True)
+        twak = TWAKAdapter(stub=True, config=cfg)
         candidates = [
             self._make_candidate("ETH", Direction.BUY, 10.0),
             self._make_candidate("AVAX", Direction.BUY, 8.0),
@@ -285,8 +285,8 @@ class TestExecuteBatch:
         from caravels.twak import TWAKAdapter
 
         db = CaravelDB(":memory:")
-        twak = TWAKAdapter(stub=True)
         cfg = _cfg(dry_run=True)
+        twak = TWAKAdapter(stub=True, config=cfg)
         candidates = [
             self._make_candidate("ETH", Direction.BUY, 10.0),
             self._make_candidate("AVAX", Direction.BUY, 8.0),

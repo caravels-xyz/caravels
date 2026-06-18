@@ -87,7 +87,8 @@ class TestCMCCallToolStub:
     def test_stub_returns_stub_dict(self):
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="", stub=True)
+        cfg = _cfg()
+        cmc = CMCAdapter(api_key="", stub=True, config=cfg)
         result = cmc.call_tool("get_global_metrics_latest", {})
         assert result.get("stub") is True
         assert result.get("tool") == "get_global_metrics_latest"
@@ -95,7 +96,8 @@ class TestCMCCallToolStub:
     def test_stub_with_symbol_arg(self):
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="", stub=True)
+        cfg = _cfg()
+        cmc = CMCAdapter(api_key="", stub=True, config=cfg)
         result = cmc.call_tool("get_crypto_technical_analysis", {"symbol": "ETH"})
         assert result.get("stub") is True
 
@@ -119,7 +121,7 @@ class TestAgenticFlagGate:
         stub = StubProvider()
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="key", stub=False)
+        cmc = CMCAdapter(api_key="key", stub=False, config=cfg)
 
         candidate, diag = helm_signal.generate(_snapshot(), cfg, stub, portfolio=_portfolio(), competition=_competition(), score=healthy_score, cmc=cmc)
         assert diag.get("source") != "agentic"
@@ -129,7 +131,7 @@ class TestAgenticFlagGate:
         stub = StubProvider()
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="key", stub=False)
+        cmc = CMCAdapter(api_key="key", stub=False, config=cfg)
 
         candidate, diag = helm_signal.generate(_snapshot(), cfg, stub, portfolio=_portfolio(), competition=_competition(), score=healthy_score, cmc=cmc)
         assert diag.get("source") != "agentic", "Stub LLM must never use agentic path"
@@ -173,9 +175,9 @@ class TestAgenticToolLoop:
     def _run(self, score: Score, final_resp: str, tool_name: str = "get_global_metrics_latest") -> tuple[CandidateAction, dict]:
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="key", stub=True)  # stub so no real network
-        llm = FakeMistralLLM(tool_name=tool_name, final_response=final_resp)
         cfg = _cfg(helm_agentic=True)
+        cmc = CMCAdapter(api_key="key", stub=True, config=cfg)  # stub so no real network
+        llm = FakeMistralLLM(tool_name=tool_name, final_response=final_resp)
 
         # Monkey-patch stub check so fake LLM is allowed.
         with patch.object(helm_signal, "_stub_type", return_value=type(None)):
@@ -212,9 +214,9 @@ class TestAgenticToolLoop:
         """If the agentic LLM returns garbage, generate() must not crash."""
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="key", stub=True)
-        llm = FakeMistralLLM(final_response="garbage output no csv here")
         cfg = _cfg(helm_agentic=True)
+        cmc = CMCAdapter(api_key="key", stub=True, config=cfg)
+        llm = FakeMistralLLM(final_response="garbage output no csv here")
 
         with patch.object(helm_signal, "_stub_type", return_value=type(None)):
             with patch.object(cmc, "_stub", False):
@@ -239,9 +241,9 @@ class TestWeakSignalGuard:
     def _run_with_snapshot(self, snapshot: MarketSnapshot, score: Score, final_resp: str) -> tuple[CandidateAction, dict]:
         from caravels.cmc import CMCAdapter
 
-        cmc = CMCAdapter(api_key="key", stub=True)
-        llm = FakeMistralLLM(final_response=final_resp)
         cfg = _cfg(helm_agentic=True)
+        cmc = CMCAdapter(api_key="key", stub=True, config=cfg)
+        llm = FakeMistralLLM(final_response=final_resp)
 
         with patch.object(helm_signal, "_stub_type", return_value=type(None)):
             with patch.object(cmc, "_stub", False):
@@ -276,7 +278,9 @@ class TestChurnGuard:
         from caravels.cmc import CMCAdapter
         from caravels.strategies import momentum_rebalance as mr_mod
 
-        cmc = CMCAdapter(api_key="key", stub=True)
+        # Trade size 0.01% — well below 2× cost (~0.15%), so cost gate fires.
+        cfg = _cfg(helm_agentic=True, simulated_cost_bps=10)
+        cmc = CMCAdapter(api_key="key", stub=True, config=cfg)
         small_drift_diag = {
             "nav": 100.0,
             "tier": 0,
@@ -292,8 +296,7 @@ class TestChurnGuard:
             "has_positive_momentum": True,
             "largest_risk_holding": None,
         }
-        # Trade size 0.01% — well below 2× cost (~0.15%), so cost gate fires.
-        cfg = _cfg(helm_agentic=True, simulated_cost_bps=10)
+
         llm = FakeMistralLLM(final_response="ETH,buy,0.01,tiny buy,too small to matter")
 
         with (

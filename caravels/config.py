@@ -14,10 +14,10 @@ Env vars never override settings.json values (two separate concerns).
 from __future__ import annotations
 
 import dataclasses
-from datetime import UTC, datetime
 import json
 import os
 from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -209,6 +209,7 @@ class AppConfig:
     eligible_tokens: dict[str, str] = field(default_factory=lambda: dict(ELIGIBLE_TOKENS))
     base_token: str = BASE_TOKEN
     loop_interval_seconds: int = 300  # seconds between ticks; override in settings.json
+    default_tx_fee_usd: float = 0.50  # used for default cost estimation
 
     @classmethod
     def from_env(cls, settings_path: str | Path | None = None) -> AppConfig:
@@ -289,6 +290,7 @@ class AppConfig:
             eligible_tokens=tokens_s,
             base_token=s.get("base_token", BASE_TOKEN),
             loop_interval_seconds=int(s.get("loop_interval_seconds", 300)),
+            default_tx_fee_usd=float(s.get("default_tx_fee_usd", 0.50)),
         )
 
     def with_dry_run(self, value: bool) -> AppConfig:

@@ -75,6 +75,7 @@ def run_loop(cfg: AppConfig) -> None:
         agentdata_sentiment_path=cfg.agentdata_sentiment_path,
         seeded_cmc_ids=cached_ids,
         tracked_symbols=symbols,
+        config=cfg,
     )
 
     # Keep configured addresses as source-of-truth; use DB cache for addresses.
@@ -158,6 +159,7 @@ def run_loop(cfg: AppConfig) -> None:
         eligible_tokens=resolved_tokens,
         network=cfg.network,
         alchemy_api_key=cfg.alchemy_api_key,
+        config=cfg,
     )
     llm = make_provider(cfg.llm_provider, mistral_api_key=cfg.mistral_api_key, openai_api_key=cfg.openai_api_key, model=cfg.llm_model)
 

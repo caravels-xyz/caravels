@@ -15,6 +15,8 @@ It is not "an AI that guesses trades." It is a **guardrailed autonomous trader**
 you can leave running through the full competition week without it becoming a
 black box.
 
+Live bot address: [0xfF802A9C9fb35574267B71E2Df3E34283e6c70d2](https://app.uniswap.org/portfolio/0xfF802A9C9fb35574267B71E2Df3E34283e6c70d2?chain=bnb)
+
 ---
 
 ## Why Caravels
