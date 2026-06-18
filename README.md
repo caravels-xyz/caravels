@@ -17,6 +17,10 @@ black box.
 
 Live bot address: [0xfF802A9C9fb35574267B71E2Df3E34283e6c70d2](https://app.uniswap.org/portfolio/0xfF802A9C9fb35574267B71E2Df3E34283e6c70d2?chain=bnb)
 
+## Demo Video
+
+[![Watch the demo](https://img.youtube.com/vi/JYbYdALxhH8/0.jpg)](https://www.youtube.com/watch?v=JYbYdALxhH8)
+
 ---
 
 ## Why Caravels
@@ -303,16 +307,24 @@ What it surfaces:
 - **Holdings & exposure** — current per-token balances and risk-on exposure.
 - **Live competition score** — net return after simulated tx costs, max
   drawdown, DQ flag, and daily trade count vs. quota.
+
+  ![dashboard-screenshot](images/dashboard1.png)
+
 - **Decision receipts** — the full audit trail: every proposed action with its
   signal rationale, **risk verdict**, **compliance result**, execution status,
   TWAK request reference, and BSC **tx hash**. Rejected trades show their
   rejection reasons — proof the agent is disciplined, not just active.
+
+  ![dashboard-screenshot](images/tick-loop-details.png)
+
 - **Per-token PnL** and **trade history**.
 - **Live event stream** — a Server-Sent-Events feed (`/api/stream`) pushes
   runtime events (snapshot fetched, signal generated, execution finished,
   skips, fallbacks) and status/receipt snapshots as they happen.
 - **Operator inquiry** — a scoped Q&A endpoint that answers `holdings`,
   `compliance`, and `performance` questions from live state via Agentic Helm (LLM).
+
+  ![dashboard-screenshot](images/ask-helm.png)
 
 HTTP/JSON endpoints (handy for demos and scripting):
 
@@ -391,10 +403,10 @@ The strongest demo shows both autonomy **and** restraint:
 ## Diagrams
 
 There are three views of the main loop that could simplify the understanding of the Caravels process: 
-[loop-state.svg](loop-state.svg) state machine diagram, [loop-flow.svg](loop-flow.svg) flow diagram and [loop-sequence.svg](loop-sequence.svg) sequence diagram. 
+[loop-state.svg](images/loop-state.svg) state machine diagram, [loop-flow.svg](images/loop-flow.svg) flow diagram and [loop-sequence.svg](images/loop-sequence.svg) sequence diagram. 
 
 ### State Diagram
-![loop-state.svg](loop-state.svg)
+![loop-state.svg](images/loop-state.svg)
 
 
 ## License
